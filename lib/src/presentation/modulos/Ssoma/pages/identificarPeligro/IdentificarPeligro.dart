@@ -3,6 +3,21 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 
+// Database Instance
+import 'package:sirh_mob/src/data/datasource/local/db_sqlite/database_ssoma.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/Peligro.dart';
+
+// Modelos
+import 'package:sirh_mob/src/domain/models/ssoma_models/PuestoTrabajo.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/Tarea.dart';
+
+// Widgets
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/CustomSelect.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/LabeledSelectNum.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/PhotoPicker.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/labeled_field.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/summary_card.dart';
+
 /// ---------- MODELOS ----------
 enum ControlType { eliminacion, sustitucion, ingenieria, administrativo, epp }
 
@@ -77,18 +92,26 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   // Variable - Drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // 1.- Instancia a la DB Ssoma
+  final db = DatabaseSsoma.instance;
+
+  // 2.- Otras instancias
   // Variable - Formulario multipasos
-  int _currentStep = -1;
+  int _currentStep = 0;
 
   // Formularios por paso
   final _formDatosKey = GlobalKey<FormState>();
+  final _formPeligrosKey = GlobalKey<FormState>();
   final _formControlesKey = GlobalKey<FormState>();
 
-  // Controllers (Paso 1)
-  final _peligroCtrl = TextEditingController();
-  final _descripcionCtrl = TextEditingController();
-  final _areaCtrl = TextEditingController();
-  final _ubicacionCtrl = TextEditingController();
+  // 3.- Controllers
+  // (Step 2)
+  final _nombrePeligroCtrl = TextEditingController();
+  final _gravedadCtrl = TextEditingController();
+  final _fechaCtrl = TextEditingController();
+  final _imagenCtrl = TextEditingController();
+  final _stdCtrl = TextEditingController();
+
   DateTime? _fecha;
 
   // Paso 2: Riesgos (chips multiselección + agregar propio)
@@ -112,12 +135,45 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
   @override
   void dispose() {
-    _peligroCtrl.dispose();
-    _descripcionCtrl.dispose();
-    _areaCtrl.dispose();
-    _ubicacionCtrl.dispose();
+    _nombrePeligroCtrl.dispose();
+    _gravedadCtrl.dispose();
+    _fechaCtrl.dispose();
+    _imagenCtrl.dispose();
+    _stdCtrl.dispose();
+    //
     _riesgoCustomCtrl.dispose();
     super.dispose();
+  }
+
+  // Puestos, tareas , peligros
+  PuestoTrabajo? _selectedPuesto;
+  dynamic _selectedTarea;
+
+  // Listas (luego puedes traerlas desde SQLite)
+  List<PuestoTrabajo> _allPuestos = [];
+  List<Tarea> _allTareas = [];
+  List<Peligro> _allPeligros = [];
+
+  void _refreshPuestos() async {
+    final data = await db.getPuestosTrabajo();
+    final tareasData = await db.getPasosTarea();
+    final peligrosData = await db.getPeligros();
+
+    setState(() {
+      _allPuestos = data;
+      _allTareas = tareasData;
+      _allPeligros = peligrosData;
+      // _isLoading = false;
+
+      // PuestoTrabajo? _selectedPuesto;
+      // dynamic _selectedTarea;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshPuestos();
   }
 
   /// ---------- ACCIONES ----------
@@ -125,6 +181,18 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     if (_currentStep == 0) {
       // Validación Paso 1
       if (_formDatosKey.currentState?.validate() != true) return;
+
+      // Validar que haya al menos un puesto seleccionado
+      if (_selectedPuesto == null) {
+        _showMsg('Selecciona un puesto de trabajo.');
+        return;
+      }
+
+      // Validar que haya al menos una tarea seleccionada
+      if (_selectedTarea == null) {
+        _showMsg('Selecciona una tarea registrada.');
+        return;
+      }
     } else if (_currentStep == 1) {
       // Validación Paso 2: al menos un riesgo
       if (_riesgosSeleccionados.isEmpty) {
@@ -196,10 +264,10 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
   void _submit() {
     final data = HazardReport(
-      peligro: _peligroCtrl.text.trim(),
-      descripcion: _descripcionCtrl.text.trim(),
-      area: _areaCtrl.text.trim(),
-      ubicacion: _ubicacionCtrl.text.trim(),
+      peligro: "",
+      descripcion: "",
+      area: "",
+      ubicacion: "",
       fecha: _fecha,
       riesgos: _riesgosSeleccionados.toList(),
       controles: _controles,
@@ -249,9 +317,15 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         // },
         onStepContinue: _next,
         onStepCancel: _back,
-        steps: [_stepDatos(), _stepRiesgos(), _stepControles(), _stepResumen()],
+        steps: [
+          _stepDatosTarea(),
+          _stepIdentificarPeligro(),
+          _stepEvaluarRiesgos(),
+          _stepMedidasControles(),
+          _stepResumen(),
+        ],
         controlsBuilder: (context, details) {
-          final isLast = _currentStep == 3;
+          final isLast = _currentStep == 4;
           return Row(
             children: [
               if (_currentStep > 0)
@@ -274,23 +348,81 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   }
 
   /// ---------- UI DE PASOS ----------
-  Step _stepDatos() {
+
+  Step _stepDatosTarea() {
     return Step(
       title: GestureDetector(
         onTap: toggleFirstStep,
-        child: const Text('Identificar Peligro'),
+        child: const Text('Datos de la Tarea'),
       ),
       isActive: _currentStep >= 0,
       state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       content: Form(
         key: _formDatosKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          // crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _LabeledField(
+            const SizedBox(height: 10),
+            // Select Puestos
+            CustomSelect<PuestoTrabajo>(
+              label: 'Puestos de trabajo',
+              items: _allPuestos,
+              // initialValue: _allPuestos.isNotEmpty ? _allPuestos[0] : null,
+              initialValue: _selectedPuesto,
+              onChanged: (value) {
+                setState(() => _selectedPuesto = value);
+                print("Seleccionado: ${value?.nombre}");
+              },
+              onAdd: () {
+                // Aquí puedes abrir un diálogo para ingresar un nuevo valor
+                context.go("/ssoma/seguridad_proteccion/add_puesto");
+                // print("Agregar nuevo elemento");
+              },
+              itemLabel: (puesto) => puesto.nombre,
+            ),
+            const SizedBox(height: 20),
+            // Select Tareas
+            CustomSelect<Tarea>(
+              label: 'Tareas registradas',
+              items: _allTareas,
+              // initialValue: _allTareas.isNotEmpty ? _allTareas[0] : null,
+              initialValue: _selectedTarea,
+              onChanged: (value) {
+                setState(() => _selectedTarea = value);
+                // print("Seleccionado: ${value?.nombre} - ${value?.pasos}");
+              },
+              onAdd: () {
+                // Aquí puedes abrir un diálogo para ingresar un nuevo valor
+                // print("Agregar nuevo elemento");
+                context.go("/ssoma/seguridad_proteccion/add_tareas");
+              },
+              itemLabel: (tarea) => tarea.pasos,
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Step _stepIdentificarPeligro() {
+    return Step(
+      title: GestureDetector(
+        onTap: toggleFirstStep,
+        child: const Text('Identificar Peligro'),
+      ),
+      isActive: _currentStep >= 1,
+      state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+      content: Form(
+        key: _formPeligrosKey,
+        child: Column(
+          // crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            LabeledField(
               label: 'Peligro (obligatorio)',
               child: TextFormField(
-                controller: _peligroCtrl,
+                controller: _nombrePeligroCtrl,
                 decoration: const InputDecoration(
                   hintText: 'Ej.: Trabajo en altura',
                   border: OutlineInputBorder(),
@@ -300,13 +432,13 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               ),
             ),
             const SizedBox(height: 12),
-            _LabeledField(
-              label: 'Descripción',
+            LabeledField(
+              label: 'Gravedad',
               child: TextFormField(
-                controller: _descripcionCtrl,
+                controller: _gravedadCtrl,
                 maxLines: 3,
                 decoration: const InputDecoration(
-                  hintText: 'Describe el peligro y el contexto',
+                  hintText: 'Describe la gravedad del peligro',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -315,22 +447,30 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             Row(
               children: [
                 Expanded(
-                  child: _LabeledField(
-                    label: 'Área/Proceso',
-                    child: TextFormField(
-                      controller: _areaCtrl,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                  child: LabeledField(
+                    label: 'Fecha',
+                    child: InkWell(
+                      onTap: _selectDate,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        child: Text(
+                          _fecha == null
+                              ? 'Fecha'
+                              : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _LabeledField(
-                    label: 'Ubicación',
+                  child: LabeledField(
+                    label: 'Estado/Std',
                     child: TextFormField(
-                      controller: _ubicacionCtrl,
+                      controller: _stdCtrl,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),
@@ -340,32 +480,23 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               ],
             ),
             const SizedBox(height: 12),
-            _LabeledField(
-              label: 'Fecha',
-              child: InkWell(
-                onTap: _selectDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
-                  ),
-                  child: Text(
-                    _fecha == null
-                        ? 'Selecciona fecha'
-                        : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
-                  ),
-                ),
-              ),
+            PhotoPicker(
+              label: "Foto del incidente",
+              onImageSelected: (file) {
+                if (file != null) {
+                  print("Imagen seleccionada: ${file.path}");
+                }
+              },
             ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
     );
   }
 
-  Step _stepRiesgos() {
+  Step _stepEvaluarRiesgos() {
     return Step(
-      // title: const Text('Riesgos'),
       title: const Text('Evaluación Riesgos'),
       isActive: _currentStep >= 1,
       state: _currentStep > 1 ? StepState.complete : StepState.indexed,
@@ -376,15 +507,35 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             'Asocia uno o varios riesgos:',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 15),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: _riesgoCatalogo.map((r) {
               final selected = _riesgosSeleccionados.contains(r);
               return FilterChip(
-                label: Text(r),
+                //label: Text(r),
+                label: SizedBox(
+                  //width: 100, //  Controla el ancho máximo del chip
+                  // height: 50,
+                  child: Text(
+                    r,
+                    style: const TextStyle(fontSize: 12), //  Texto más pequeño
+                    // softWrap: false, //  Permite salto de línea
+                    // overflow: TextOverflow.visible,
+                  ),
+                ),
                 selected: selected,
+                labelPadding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                materialTapTargetSize:
+                    MaterialTapTargetSize.shrinkWrap, //  Reduce altura
+                padding: const EdgeInsets.all(6), //  Chip más compacto
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 onSelected: (val) {
                   setState(() {
                     if (val) {
@@ -397,7 +548,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
           Row(
             children: [
               Expanded(
@@ -418,12 +569,61 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               ),
             ],
           ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              LabeledSelectNum(
+                label: "Índice de Personas Exp. (A)",
+                onChanged: (val) {
+                  debugPrint("A -> $val");
+                },
+              ),
+              const SizedBox(width: 10),
+              LabeledSelectNum(
+                label: "Índice de Procedimientos (B)",
+                onChanged: (val) {
+                  debugPrint("B -> $val");
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              LabeledSelectNum(
+                label: "Índice de Capacitación (C)",
+                onChanged: (val) {
+                  debugPrint("C -> $val");
+                },
+              ),
+              const SizedBox(width: 10),
+              LabeledSelectNum(
+                label: "Índice de Exposición al Riesgo (D)",
+                onChanged: (val) {
+                  debugPrint("D -> $val");
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              LabeledSelectNum(
+                label: "ÍNDICE DE SEVERIDAD",
+                onChanged: (val) {
+                  debugPrint("Severidad -> $val");
+                },
+              ),
+              const Spacer(), // para alinear solo uno en esta fila
+            ],
+          ),
+          const SizedBox(height: 15),
         ],
       ),
     );
   }
 
-  Step _stepControles() {
+  Step _stepMedidasControles() {
     return Step(
       // title: const Text('Controles'),
       title: const Text('Medidas de Control'),
@@ -508,6 +708,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 label: const Text('Agregar control'),
               ),
             ),
+
+            PhotoPicker(label: "Imagen/Evidencia"),
           ],
         ),
       ),
@@ -522,11 +724,11 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SummaryCard(
+          SummaryCard(
             title: 'Datos del peligro',
             children: [
-              _kv('Peligro', _peligroCtrl.text),
-              _kv('Descripción', _descripcionCtrl.text),
+              _kv('Peligro', _nombrePeligroCtrl.text),
+              _kv('Descripción', _gravedadCtrl.text),
               // Row(
               //   children: [
               //     Expanded(child: _kv('Área/Proceso', _areaCtrl.text)),
@@ -534,8 +736,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               //     Expanded(child: _kv('Ubicación', _ubicacionCtrl.text)),
               //   ],
               // ),
-              _kv('Área/Proceso', _areaCtrl.text),
-              _kv('Ubicación', _ubicacionCtrl.text),
+              // _kv('Área/Proceso', _areaCtrl.text),
+              _kv('Estado', _stdCtrl.text),
               _kv(
                 'Fecha',
                 _fecha == null
@@ -545,7 +747,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             ],
           ),
           const SizedBox(height: 12),
-          _SummaryCard(
+          SummaryCard(
             title: 'Riesgos asociados',
             children: [
               Wrap(
@@ -558,7 +760,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             ],
           ),
           const SizedBox(height: 12),
-          _SummaryCard(
+          SummaryCard(
             title: 'Controles',
             children: _controles.isEmpty
                 ? [const Text('Sin controles')]
@@ -671,55 +873,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
           child: Icon(Icons.menu, color: Colors.black, size: 43),
         ),
       ],
-    );
-  }
-}
-
-class _LabeledField extends StatelessWidget {
-  final String label;
-  final Widget child;
-  const _LabeledField({required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-        const SizedBox(height: 6),
-        child,
-      ],
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const _SummaryCard({required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            ...children,
-          ],
-        ),
-      ),
     );
   }
 }

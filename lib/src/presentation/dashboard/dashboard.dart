@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sirh_mob/src/presentation/Ssoma/pages/gestionIncidencias/gestionIncidencias.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/gestionIncidencias/gestionIncidencias.dart';
 import 'package:sirh_mob/src/presentation/home/HomeScreen.dart';
 import 'package:sirh_mob/src/presentation/notificaciones/notificaciones.dart';
 

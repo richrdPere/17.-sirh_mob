@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sirh_mob/src/presentation/Ssoma/pages/OptionsSsoma/OptionsSsoma.dart';
-import 'package:sirh_mob/src/presentation/Ssoma/pages/identificarPeligro/IdentificarPeligro.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/OptionsSsoma/OptionsSsoma.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPasosTareas.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPuestoTrabajo.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/IdentificarPeligro.dart';
 import 'package:sirh_mob/src/presentation/auth/login/LoginPage.dart';
 import 'package:sirh_mob/src/presentation/auth/register/RegisterPage.dart';
 import 'package:sirh_mob/src/presentation/dashboard/MCuscoPage.dart';
@@ -23,10 +25,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/register', builder: (context, state) => RegisterPage()),
     GoRoute(path: '/roles', builder: (context, state) => RolesPage()),
     GoRoute(path: '/profile', builder: (context, state) => ProfileInfoPage()),
-    GoRoute(
-      path: '/muni',
-      builder: (context, state) => MCuscoPage(),
-    ),
+    GoRoute(path: '/muni', builder: (context, state) => MCuscoPage()),
 
     GoRoute(
       path: '/ssoma',
@@ -35,6 +34,16 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/seguridad_proteccion',
           builder: (context, state) => IdentificarPeligro(),
+          routes: [
+            GoRoute(
+              path: '/add_puesto',
+              builder: (context, state) => AgregarPuestoTrabajo(),
+            ),
+            GoRoute(
+              path: '/add_tareas',
+              builder: (context, state) => AgregarPasosTareas(),
+            ),
+          ],
         ),
       ],
     ),
