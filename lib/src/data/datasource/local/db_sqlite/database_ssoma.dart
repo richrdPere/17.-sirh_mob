@@ -1,3 +1,5 @@
+import 'package:sirh_mob/src/domain/models/ssoma_models/Control.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/EvaluacionRiesgo.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -152,7 +154,7 @@ class DatabaseSsoma {
       await delete('ss_puesto_trabajo', 'ptr_id = ?', [id]);
 
   // ===========================================
-  // 2.- PASOS - TAREAS
+  // 3.- PASOS - TAREAS
   // ===========================================
   Future<int> insertPasosTarea(Tarea tarea) async =>
       await insert('ss_tarea', tarea.toMap());
@@ -172,6 +174,55 @@ class DatabaseSsoma {
 
   Future<int> deletePasosTarea(int id) async =>
       await delete('ss_tarea', 'tar_id = ?', [id]);
+
+  // ===========================================
+  // 4. CONTROLES
+  // ===========================================
+  Future<int> insertControl(Control control) async =>
+      await insert('ss_control', control.toMap());
+
+  Future<List<Control>> getControles() async {
+    final maps = await queryAll('ss_control');
+    return maps.map((m) => Control.fromMap(m)).toList();
+  }
+
+  Future<Control?> getControlById(int id) async {
+    final map = await queryById('ss_control', 'con_id', id);
+    return map != null ? Control.fromMap(map) : null;
+  }
+
+  Future<int> updateControl(Control control) async =>
+      await update('ss_control', control.toMap(), 'con_id = ?', [control.id]);
+
+  Future<int> deleteControl(int id) async =>
+      await delete('ss_control', 'con_id = ?', [id]);
+
+  // ===========================================
+  // 5.- MEDIDAS DE RIESGO
+  // ===========================================
+  Future<int> insertEvaluacionRiesgo(EvaluacionRiesgo evaluacionRiesgo) async =>
+      await insert('ss_evaluacion_riesgo', evaluacionRiesgo.toMap());
+
+  Future<List<EvaluacionRiesgo>> getEvaluacionRiesgo() async {
+    final maps = await queryAll('ss_evaluacion_riesgo');
+    return maps.map((m) => EvaluacionRiesgo.fromMap(m)).toList();
+  }
+
+  Future<EvaluacionRiesgo?> getEvaluacionRiesgoById(int id) async {
+    final map = await queryById('ss_evaluacion_riesgo', 'eri_id', id);
+    return map != null ? EvaluacionRiesgo.fromMap(map) : null;
+  }
+
+  Future<int> updateEvaluacionRiesgo(EvaluacionRiesgo evaluacionRiesgo) async =>
+      await update(
+        'ss_evaluacion_riesgo',
+        evaluacionRiesgo.toMap(),
+        'eri_id = ?',
+        [evaluacionRiesgo.id],
+      );
+
+  Future<int> deleteEvaluacionRiesgo(int id) async =>
+      await delete('ss_evaluacion_riesgo', 'eri_id = ?', [id]);
 
   // Aquí puedes seguir con Tarea, Control, EvaluacionRiesgo, etc.
 }

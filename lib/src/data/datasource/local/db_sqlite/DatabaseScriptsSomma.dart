@@ -17,10 +17,15 @@ class DatabaseScriptsSsoma {
 
   // 2.- ss_peligro
   static const String createPeligroTable = '''
+  
   CREATE TABLE ss_peligro (
     pel_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pel_id_puesto_trabajo INTEGER,
+    pel_id_tarea INTEGER,
     pel_nombre TEXT,
-    pel_descripcion TEXT,
+    pel_gravedad TEXT,
+    pel_imagen TEXT,
+    pel_fecha_identificacion TEXT,
     pel_std TEXT,
     pel_user_ins TEXT,
     pel_fecha_ins TEXT,
@@ -139,5 +144,4 @@ CREATE TABLE ss_medida_control (
   mec_fecha_mod TEXT
 );
 ''';
-
 }

@@ -18,13 +18,13 @@ class EvaluacionRiesgo {
   final int? exposicionRiesgoEval;
   final int? probabilidadEval;
   final int? severidadEval;
-  final DateTime? fechaEvaluacion;
+  final String? fechaEvaluacion;
   final String? observaciones;
   final String? std;
   final String? usuarioCreacion;
-  final DateTime? fechaCreacion;
+  final String? fechaCreacion;
   final String? usuarioModificacion;
-  final DateTime? fechaModificacion;
+  final String? fechaModificacion;
 
   EvaluacionRiesgo({
     this.id,
@@ -73,19 +73,22 @@ class EvaluacionRiesgo {
       exposicionRiesgoEval: json['eri_exposicion_riesgo_eval'],
       probabilidadEval: json['eri_probabilidad_eval'],
       severidadEval: json['eri_severidad_eval'],
-      fechaEvaluacion: json['rgo_fecha_evaluacion'] != null
-          ? DateTime.tryParse(json['rgo_fecha_evaluacion'])
-          : null,
+      fechaEvaluacion: json['rgo_fecha_evaluacion'],
+      // fechaEvaluacion: json['rgo_fecha_evaluacion'] != null
+      //     ? DateTime.tryParse(json['rgo_fecha_evaluacion'])
+      //     : null,
       observaciones: json['eri_observaciones'],
       std: json['eri_std'],
       usuarioCreacion: json['eri_user_ins'],
-      fechaCreacion: json['eri_fecha_ins'] != null
-          ? DateTime.tryParse(json['eri_fecha_ins'])
-          : null,
+      fechaCreacion: json['eri_fecha_ins'],
+      // fechaCreacion: json['eri_fecha_ins'] != null
+      //     ? DateTime.tryParse(json['eri_fecha_ins'])
+      //     : null,
       usuarioModificacion: json['eri_user_mod'],
-      fechaModificacion: json['eri_fecha_mod'] != null
-          ? DateTime.tryParse(json['eri_fecha_mod'])
-          : null,
+      fechaModificacion: json['eri_fecha_mod'],
+      // fechaModificacion: json['eri_fecha_mod'] != null
+      //     ? DateTime.tryParse(json['eri_fecha_mod'])
+      //     : null,
     );
   }
 
@@ -108,13 +111,88 @@ class EvaluacionRiesgo {
       'eri_exposicion_riesgo_eval': exposicionRiesgoEval,
       'eri_probabilidad_eval': probabilidadEval,
       'eri_severidad_eval': severidadEval,
-      'rgo_fecha_evaluacion': fechaEvaluacion?.toIso8601String(),
+      'rgo_fecha_evaluacion': fechaEvaluacion,
+      // 'rgo_fecha_evaluacion': fechaEvaluacion?.toIso8601String(),
       'eri_observaciones': observaciones,
       'eri_std': std,
       'eri_user_ins': usuarioCreacion,
-      'eri_fecha_ins': fechaCreacion?.toIso8601String(),
+      'eri_fecha_ins': fechaCreacion,
+      // 'eri_fecha_ins': fechaCreacion?.toIso8601String(),
       'eri_user_mod': usuarioModificacion,
-      'eri_fecha_mod': fechaModificacion?.toIso8601String(),
+      'eri_fecha_mod': fechaModificacion,
+      // 'eri_fecha_mod': fechaModificacion?.toIso8601String(),
     };
+  }
+
+  // ----------- TO MAP (SQLite) -----------
+  Map<String, dynamic> toMap() {
+    return {
+      'eri_id': id,
+      'eri_id_peligro': peligroId,
+      'eri_nombre': nombre,
+      'eri_tipo': tipo,
+      'eri_persona_expuesta_iden': personaExpuestaIden,
+      'eri_procedimiento_existente_iden': procedimientoExistenteIden,
+      'eri_capacitacion_iden': capacitacionIden,
+      'eri_exposicion_riesgo_iden': exposicionRiesgoIden,
+      'eri_probabilidad_iden': probabilidadIden,
+      'eri_severidad_iden': severidadIden,
+      'eri_fase': fase,
+      'eri_persona_expuesta_eval': personaExpuestaEval,
+      'eri_procedimiento_existente_eval': procedimientoExistenteEval,
+      'eri_capacitacion_eval': capacitacionEval,
+      'eri_exposicion_riesgo_eval': exposicionRiesgoEval,
+      'eri_probabilidad_eval': probabilidadEval,
+      'eri_severidad_eval': severidadEval,
+      'rgo_fecha_evaluacion': fechaEvaluacion,
+      // 'rgo_fecha_evaluacion': fechaEvaluacion?.toIso8601String(),
+      'eri_observaciones': observaciones,
+      'eri_std': std,
+      'eri_user_ins': usuarioCreacion,
+      'eri_fecha_ins': fechaCreacion,
+      // 'eri_fecha_ins': fechaCreacion?.toIso8601String(),
+      'eri_user_mod': usuarioModificacion,
+      'eri_fecha_mod': fechaModificacion,
+      // 'eri_fecha_mod': fechaModificacion?.toIso8601String(),
+    };
+  }
+
+  // ----------- FROM MAP (SQLite) -----------
+  factory EvaluacionRiesgo.fromMap(Map<String, dynamic> map) {
+    return EvaluacionRiesgo(
+      id: map['eri_id'],
+      peligroId: map['eri_id_peligro'],
+      nombre: map['eri_nombre'],
+      tipo: map['eri_tipo'],
+      personaExpuestaIden: map['eri_persona_expuesta_iden'],
+      procedimientoExistenteIden: map['eri_procedimiento_existente_iden'],
+      capacitacionIden: map['eri_capacitacion_iden'],
+      exposicionRiesgoIden: map['eri_exposicion_riesgo_iden'],
+      probabilidadIden: map['eri_probabilidad_iden'],
+      severidadIden: map['eri_severidad_iden'],
+      fase: map['eri_fase'],
+      personaExpuestaEval: map['eri_persona_expuesta_eval'],
+      procedimientoExistenteEval: map['eri_procedimiento_existente_eval'],
+      capacitacionEval: map['eri_capacitacion_eval'],
+      exposicionRiesgoEval: map['eri_exposicion_riesgo_eval'],
+      probabilidadEval: map['eri_probabilidad_eval'],
+      severidadEval: map['eri_severidad_eval'],
+      fechaEvaluacion: map['rgo_fecha_evaluacion'] ,
+      // fechaEvaluacion: map['rgo_fecha_evaluacion'] != null
+      //     ? DateTime.tryParse(map['rgo_fecha_evaluacion'])
+      //     : null,
+      observaciones: map['eri_observaciones'],
+      std: map['eri_std'],
+      usuarioCreacion: map['eri_user_ins'],
+      fechaCreacion: map['eri_fecha_ins'] ,
+      // fechaCreacion: map['eri_fecha_ins'] != null
+      //     ? DateTime.tryParse(map['eri_fecha_ins'])
+      //     : null,
+      usuarioModificacion: map['eri_user_mod'],
+      fechaModificacion: map['eri_fecha_mod'],
+      // fechaModificacion: map['eri_fecha_mod'] != null
+      //     ? DateTime.tryParse(map['eri_fecha_mod'])
+      //     : null,
+    );
   }
 }

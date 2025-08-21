@@ -21,8 +21,8 @@ class Control {
   int? id; // con_id
   String nombre; // con_nombre
   String descripcion; // con_descripcion
-  // String tipo; // con_tipo
-  ControlType tipo; // con_tipo
+  String tipo; // con_tipo
+  // ControlType tipo; // con_tipo
   String categoria; // con_categoria
   String std; // con_std
   String usuarioCreacion; // con_user_ins
@@ -49,7 +49,8 @@ class Control {
       'con_id': id,
       'con_nombre': nombre,
       'con_descripcion': descripcion,
-      'con_tipo': tipo.label,
+      // 'con_tipo': tipo.label,
+      'con_tipo': tipo,
       'con_categoria': categoria,
       'con_std': std,
       'con_user_ins': usuarioCreacion,
@@ -65,11 +66,11 @@ class Control {
       id: map['con_id'],
       nombre: map['con_nombre'],
       descripcion: map['con_descripcion'],
-      // tipo: map['con_tipo'],
-      tipo: ControlType.values.firstWhere(
-        (e) => e.label == map['con_tipo'],
-        orElse: () => ControlType.epp,
-      ),
+      tipo: map['con_tipo'],
+      // tipo: ControlType.values.firstWhere(
+      //   (e) => e.label == map['con_tipo'],
+      //   orElse: () => ControlType.epp,
+      // ),
       categoria: map['con_categoria'],
       std: map['con_std'],
       usuarioCreacion: map['con_user_ins'],

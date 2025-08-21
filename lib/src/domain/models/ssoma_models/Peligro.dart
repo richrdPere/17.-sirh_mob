@@ -8,7 +8,7 @@ class Peligro {
   final String? ruta; // imagen
   final String? std;
   final String? usuarioCreacion;
-  final DateTime? fechaCreacion;
+  final String? fechaCreacion;
   final String? usuarioModificacion;
   final DateTime? fechaModificacion;
 
@@ -41,9 +41,10 @@ class Peligro {
       ruta: json['ruta'],
       std: json['std'],
       usuarioCreacion: json['usuarioCreacion'],
-      fechaCreacion: json['fechaCreacion'] != null
-          ? DateTime.parse(json['fechaCreacion'])
-          : null,
+      fechaCreacion: json['fechaCreacion'],
+      // fechaCreacion: json['fechaCreacion'] != null
+      //     ? String.parse(json['fechaCreacion'])
+      //     : null,
       usuarioModificacion: json['usuarioModificacion'],
       fechaModificacion: json['fechaModificacion'] != null
           ? DateTime.parse(json['fechaModificacion'])
@@ -62,7 +63,8 @@ class Peligro {
       'ruta': ruta,
       'std': std,
       'usuarioCreacion': usuarioCreacion,
-      'fechaCreacion': fechaCreacion?.toIso8601String(),
+      'fechaCreacion': fechaCreacion,
+      // 'fechaCreacion': fechaCreacion?.toIso8601String(),
       'usuarioModificacion': usuarioModificacion,
       'fechaModificacion': fechaModificacion?.toIso8601String(),
     };

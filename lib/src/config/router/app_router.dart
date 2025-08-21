@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/OptionsSsoma/OptionsSsoma.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarControl.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPasosTareas.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPuestoTrabajo.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/IdentificarPeligro.dart';
@@ -42,6 +43,10 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/add_tareas',
               builder: (context, state) => AgregarPasosTareas(),
+            ),
+            GoRoute(
+              path: '/add_controles',
+              builder: (context, state) => AgregarControl(),
             ),
           ],
         ),

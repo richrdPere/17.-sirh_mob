@@ -51,7 +51,15 @@ class _CustomSelectState<T> extends State<CustomSelect<T>> {
             ),
             value: selectedValue,
             items: widget.items
-                .map((item) => DropdownMenuItem<T>(value: item, child: Text(widget.itemLabel(item), style: TextStyle(fontSize: 14),)))
+                .map(
+                  (item) => DropdownMenuItem<T>(
+                    value: item,
+                    child: Text(
+                      widget.itemLabel(item),
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               setState(() {
@@ -64,11 +72,13 @@ class _CustomSelectState<T> extends State<CustomSelect<T>> {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton(
-          onPressed: widget.onAdd,
-          icon: const Icon(Icons.add_circle, color: Colors.blue, size: 35),
-          tooltip: "Agregar nuevo",
-        ),
+        // Solo mostramos el botón si onAdd no es null
+        if (widget.onAdd != null)
+          IconButton(
+            onPressed: widget.onAdd,
+            icon: const Icon(Icons.add_circle, color: Colors.blue, size: 35),
+            tooltip: "Agregar nuevo",
+          ),
       ],
     );
   }
