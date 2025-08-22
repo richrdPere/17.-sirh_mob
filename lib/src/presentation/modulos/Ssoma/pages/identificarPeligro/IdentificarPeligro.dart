@@ -1,21 +1,22 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
 
 // Database Instance
 import 'package:sirh_mob/src/data/datasource/local/db_sqlite/database_ssoma.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/MedidasControl.dart';
 
 // Modelos
 import 'package:sirh_mob/src/domain/models/ssoma_models/PuestoTrabajo.dart';
 import 'package:sirh_mob/src/domain/models/ssoma_models/Tarea.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarControl.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPasosTareas.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPuestoTrabajo.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/VerPeligros.dart';
 import 'package:sirh_mob/src/domain/models/ssoma_models/Control.dart';
 import 'package:sirh_mob/src/domain/models/ssoma_models/EvaluacionRiesgo.dart';
 import 'package:sirh_mob/src/domain/models/ssoma_models/Peligro.dart';
-
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/CustomIconButton.dart';
 
 // Widgets
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/widgets/CustomSelect.dart';
@@ -110,26 +111,35 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   final _formDatosKey = GlobalKey<FormState>();
   final _formPeligrosKey = GlobalKey<FormState>();
   final _formEvaluacionkey = GlobalKey<FormState>();
-  final _formControlesKey = GlobalKey<FormState>();
+  final _formMedidasControlesKey = GlobalKey<FormState>();
 
   // 3.- Controllers
-  // (Step 1)
+
+  // ====================================================
+  // (Step 1) - DATOS DE LA TAREA
+  // ====================================================
   int? _idPuestoTrabajo;
   int? _idTarea;
 
-  // (Step 2)
+  String _nombrePuestoTrabajoResumen = "";
+  String _nombreTareaResumen = "";
+  String _pasosTareaResumen = "";
+
+  // ====================================================
+  // (Step 2) - IDENTIFICAR PELIGRO
+  // ====================================================
   final _nombrePeligroCtrl = TextEditingController();
-  final _gravedadCtrl = TextEditingController();
-  final _imagenCtrl = TextEditingController();
-  final _stdCtrl = TextEditingController();
-  // final _fecha = TextEditingController();
+  final _gravedadPeligroCtrl = TextEditingController();
+  final _imagenPeligroCtrl = TextEditingController();
+  final _stdPeligroCtrl = TextEditingController();
   DateTime? _fecha;
 
-  // (Step 3)
+  // ====================================================
+  // (Step 3) - EVALUACIÓN RIESGOS
+  // ====================================================
   int? _idPeligro;
 
-  // final TextEditingController _nombreEvalRiesgoCtrl = TextEditingController();
-  final _riesgoCustomCtrl = TextEditingController();
+  final _nombresRiesgosCustomCtrl = TextEditingController();
   final _tipoEvalRiesgo = TextEditingController();
   final _observacionesEvalRiesgo = TextEditingController();
   final _stdEvalRiesgo = TextEditingController();
@@ -144,7 +154,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   int?
   _probabilidadIden; // _personaExpuestaIden + _procedimientoExistenteIden + _capacitacionIden + _exposicionRiesgoIden
   int? _severidadIden;
-
   num _countProbabilidadIden = 0;
 
   int? _fase; // _probabilidadIden * _severidadIden
@@ -158,9 +167,11 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
   int?
   _probabilidadEval; // _personaExpuestaEval + _procedimientoExistenteEval + _capacitacionEval + _exposicionRiesgoEval
+  num _countProbabilidadEval = 0;
+
   int? _severidadEval;
 
-  // Paso 2: Riesgos (chips multiselección + agregar propio)
+  // Riesgos (chips multiselección + agregar propio)
   final List<String> _riesgoCatalogo = [
     'Caída a distinto nivel',
     'Atrapamiento',
@@ -173,103 +184,121 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   ];
   final Set<String> _riesgosSeleccionados = {};
 
-  // Paso 3: Controles (lista dinámica)
+  // ====================================================
+  // (Step 4) - MEDIDAS DE CONTROL
+  // ====================================================
+  int? _idEvaluacionRiesgo;
+  List<int> _idControlesSelected = [];
+  final _responsableControlCtrl = TextEditingController();
+  DateTime? _fechaImplementacionControlCtrl;
+  final _eficaciaControlCtrl = TextEditingController();
+  final _estadoControlCtrl = TextEditingController();
+  final _rutaControlCtrl = TextEditingController();
+  final _evidenciaControlCtrl = TextEditingController();
+  final _stdControlCtrl = TextEditingController();
+  // final usuarioCreacion
+  // Fecha creacion
+  // Usuario modificacion}
+  // Fecha modificacion
+
+  // Controles (lista dinámica)
   final List<ControlEntry> _controles = [
     ControlEntry(type: ControlType.epp, description: ''),
   ];
 
-  List<Control> _allControles = [];
-  List<int> _riesgosSelec = []; // Solo almacenamos los IDs seleccionados
-
-  @override
-  void dispose() {
-    _nombrePeligroCtrl.dispose();
-    _gravedadCtrl.dispose();
-    // _fechaCtrl.dispose();
-    _imagenCtrl.dispose();
-    _stdCtrl.dispose();
-    //
-
-    // STEP 3:
-    _tipoEvalRiesgo.dispose();
-    _riesgoCustomCtrl.dispose();
-    // _nombreEvalRiesgoCtrl.dispose();
-    super.dispose();
-  }
-
-  /// Carga los datos desde la base de datos SQLite
-  void _cargarRiesgos() async {
-    try {
-      final data = await db.getControles();
-
-      setState(() {
-        _allControles = data;
-      });
-    } catch (e) {
-      debugPrint("Error cargando riesgos: $e");
-    }
-  }
-
+  // ====================================================================
+  // ================ LISTAS PARA TAER DE SQLITE ========================
+  // ====================================================================
   // Puestos, tareas , peligros
   PuestoTrabajo? _selectedPuesto;
-  dynamic _selectedTarea;
+  Tarea? _selectedTarea;
   Peligro? _selectedPeligro;
+  EvaluacionRiesgo? _selectedEvaluacionRiesgo;
 
   // Listas (luego puedes traerlas desde SQLite)
   List<PuestoTrabajo> _allPuestos = [];
   List<Tarea> _allTareas = [];
   List<Peligro> _allPeligros = [];
+  List<EvaluacionRiesgo> _allEvaluacionRiesgos = [];
+  List<Control> _allControles = [];
 
+  // Lista para registrar los riesgos
+  List<int> _riesgosSelected = []; // Solo almacenamos los IDs seleccionados
+
+  /// Carga los datos desde la base de datos SQLite
+  /// 1.- Puestos Trabajo
   void _refreshPuestosTrabajo() async {
-    final data = await db.getPuestosTrabajo();
-    setState(() {
-      _allPuestos = data;
-    });
+    try {
+      final data = await db.getPuestosTrabajo();
+      setState(() {
+        _allPuestos = data;
+      });
+    } catch (e) {
+      debugPrint("Error cargando puestos de trabajo: $e");
+    }
   }
 
+  /// 2.- Pasos tarea
   void _refreshPasosTarea() async {
-    final tareasData = await db.getPasosTarea();
-    setState(() {
-      _allTareas = tareasData;
-      // _isLoading = false;
-      // PuestoTrabajo? _selectedPuesto;
-      // dynamic _selectedTarea;
-    });
+    try {
+      final tareasData = await db.getPasosTarea();
+      setState(() {
+        _allTareas = tareasData;
+        // _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error cargando pasos de tarea: $e");
+    }
   }
 
+  /// 3.- Peligro
   void _refreshPeligro() async {
-    final peligrosData = await db.getPeligros();
-    setState(() {
-      _allPeligros = peligrosData;
-    });
+    try {
+      final peligrosData = await db.getPeligros();
+      setState(() {
+        _allPeligros = peligrosData;
+      });
+    } catch (e) {
+      debugPrint("Error cargando peligros: $e");
+    }
   }
 
+  /// 4.- Evaluacion de Riesgos
+  void _refreshEvaluacionRiesgos() async {
+    try {
+      final evaluacionRiesgosData = await db.getEvaluacionRiesgo();
+      setState(() {
+        _allEvaluacionRiesgos = evaluacionRiesgosData;
+      });
+    } catch (e) {
+      debugPrint("Error cargando evaluaciones de risgos: $e");
+    }
+  }
+
+  /// 5.- Controles
   void _refreshControles() async {
-    final controlesData = await db.getControles();
-    setState(() {
-      _allControles = controlesData;
-    });
+    try {
+      final controlesData = await db.getControles();
+      setState(() {
+        _allControles = controlesData;
+      });
+    } catch (e) {
+      debugPrint("Error cargando controles: $e");
+    }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _refreshPuestosTrabajo();
-    _refreshPasosTarea();
-    _refreshPeligro();
-    _refreshControles();
-    _cargarRiesgos();
-  }
-
-  /// FUNCIONES INSERT - PELIGRO
+  // ====================================================================
+  // ============== FUNCIONES INSERT, UPDATE ============================
+  // ====================================================================
+  /// 1.- FUNCIONES INSERT - PELIGRO
   Future<void> _insertarPeligro() async {
     if (_formPeligrosKey.currentState!.validate()) {
       final nuevoPeligro = Peligro(
         nombre: _nombrePeligroCtrl.text,
-        gravedad: _gravedadCtrl.text,
+        gravedad: _gravedadPeligroCtrl.text,
         fechaCreacion: _fechaString,
         // fechaCreacion: _fecha,
-        std: _stdCtrl.text,
+        std: _stdPeligroCtrl.text,
         ruta: "",
         puestoTrabajoId: _idPuestoTrabajo,
         tareaId: _idTarea,
@@ -293,12 +322,13 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     }
   }
 
-  /// FUNCIONES INSERT - EVALUACION RIESGO
+  /// 2.- FUNCIONES INSERT y UPDATE - EVALUACION RIESGO
   Future<void> _insertarEvaluacionRiesgo() async {
     if (_formEvaluacionkey.currentState!.validate()) {
       final nuevaEvaluacion = EvaluacionRiesgo(
+        // Datos
         peligroId: _idPeligro,
-        nombre: _riesgoCustomCtrl.text,
+        nombre: _riesgosSeleccionadosString,
         tipo: _tipoEvalRiesgo.text,
         fechaEvaluacion: _fechaString,
         observaciones: _observacionesEvalRiesgo.text,
@@ -319,7 +349,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         procedimientoExistenteEval: _procedimientoExistenteEval,
         capacitacionEval: _capacitacionEval,
         exposicionRiesgoEval: _exposicionRiesgoEval,
-        probabilidadEval: _probabilidadEval,
+        probabilidadEval: _countProbabilidadEval.toInt(),
         severidadEval: _severidadEval,
       );
 
@@ -333,7 +363,167 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     }
   }
 
-  /// ---------- ACCIONES ----------
+  Future<void> _actualizarEvaluacionRiesgo(int evaluacionId) async {
+    try {
+      // Creamos un mapa con los datos de control que se van a actualizar
+      final Map<String, dynamic> datosControl = {
+        'personaExpuestaEval': _personaExpuestaEval,
+        'procedimientoExistenteEval': _procedimientoExistenteEval,
+        'capacitacionEval': _capacitacionEval,
+        'exposicionRiesgoEval': _exposicionRiesgoEval,
+        'probabilidadEval': _probabilidadEval,
+        'severidadEval': _severidadEval,
+      };
+
+      // Llamamos al método del servicio/database
+      await db.updateEvaluacionRiesgoById(evaluacionId, datosControl);
+
+      // Mostramos confirmación visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Controles actualizados correctamente")),
+      );
+    } catch (e) {
+      // Manejo de errores
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al actualizar controles: $e")),
+      );
+    }
+  }
+
+  /// 3.- FUNCIONES INSERT y UPDATE - MEDIDAS DE CONTROL
+  Future<void> _insertarMedidaControl() async {
+    if (_formEvaluacionkey.currentState!.validate()) {
+      final nuevaMedidaControl = MedidaControl(
+        // Datos
+        riesgoId: _idEvaluacionRiesgo,
+        controlId: 1,
+        responsable: _responsableControlCtrl.text,
+        fechaImplementacion: _fecha,
+        eficacia: _eficaciaControlCtrl.text,
+        estado: _estadoControlCtrl.text,
+        ruta: _rutaControlCtrl.text,
+        evidencia: _evidenciaControlCtrl.text,
+        std: _stdControlCtrl.text,
+
+        // Datos de usuario
+        usuarioCreacion: 'Admin',
+      );
+
+      await db.insertMedidasControl(nuevaMedidaControl);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Medida de control registrado correctamente"),
+        ),
+      );
+    }
+  }
+
+  Future<void> _actualizarMedidaControl(int evaluacionId) async {
+    try {
+      // Creamos un mapa con los datos de control que se van a actualizar
+      final Map<String, dynamic> datosControl = {
+        'personaExpuestaEval': _personaExpuestaEval,
+        'procedimientoExistenteEval': _procedimientoExistenteEval,
+        'capacitacionEval': _capacitacionEval,
+        'exposicionRiesgoEval': _exposicionRiesgoEval,
+        'probabilidadEval': _probabilidadEval,
+        'severidadEval': _severidadEval,
+      };
+
+      // Llamamos al método del servicio/database
+      await db.updateEvaluacionRiesgoById(evaluacionId, datosControl);
+
+      // Mostramos confirmación visual
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Controles actualizados correctamente")),
+      );
+    } catch (e) {
+      // Manejo de errores
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al actualizar controles: $e")),
+      );
+    }
+  }
+
+  // ====================================================================
+  // ================ FUNCIONES PRINCIPALES =============================
+  // ====================================================================
+  void _selectDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fecha ?? now,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() {
+        _fecha = picked;
+        // Convertimos la fecha seleccionada a String en formato yyyy-MM-dd
+        _fechaString = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
+  void _addCustomRisk() {
+    final newRisk = _nombresRiesgosCustomCtrl.text.trim();
+    if (newRisk.isNotEmpty && !_riesgoCatalogo.contains(newRisk)) {
+      setState(() {
+        _riesgoCatalogo.add(newRisk);
+        _riesgosSeleccionados.add(newRisk);
+        _riesgosSeleccionadosString = _riesgosSeleccionados.join(", ");
+        _nombresRiesgosCustomCtrl.clear();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Libera los recursos en memoria usados por los controladores
+    // ============================
+    // STEP 2: IDENTIFICAR PELIGRO
+    // ============================
+    _nombrePeligroCtrl.dispose();
+    _gravedadPeligroCtrl.dispose();
+    _imagenPeligroCtrl.dispose();
+    _stdPeligroCtrl.dispose();
+
+    // ============================
+    // STEP 3: EVALUACIÓN RIESGOS
+    // ============================
+    _nombresRiesgosCustomCtrl.dispose();
+    _tipoEvalRiesgo.dispose();
+    _observacionesEvalRiesgo.dispose();
+    _stdEvalRiesgo.dispose();
+
+    // ============================
+    // STEP 4: MEDIDAS DE CONTROL
+    // ============================
+    _responsableControlCtrl.dispose();
+    _eficaciaControlCtrl.dispose();
+    _estadoControlCtrl.dispose();
+    _rutaControlCtrl.dispose();
+    _evidenciaControlCtrl.dispose();
+    _stdControlCtrl.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _refreshPuestosTrabajo();
+    _refreshPasosTarea();
+    _refreshPeligro();
+    _refreshEvaluacionRiesgos();
+    _refreshControles();
+  }
+
+  // ====================================================================
+  // =================== ACCIONES DE STEP'S =============================
+  // ====================================================================
   void _next() async {
     if (_currentStep == 0) {
       // Validación Paso 1
@@ -358,6 +548,9 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       if (_formPeligrosKey.currentState!.validate()) {
         // Guardamos en la base de datos
         await _insertarPeligro();
+        setState(() {
+          _refreshPeligro();
+        });
       }
     }
 
@@ -372,9 +565,14 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       if (_formEvaluacionkey.currentState!.validate()) {
         await _insertarEvaluacionRiesgo();
       }
-    } else if (_currentStep == 3) {
+    }
+    if (_currentStep == 3) {
       // Validación Paso 4: al menos un control válido
       // y que todas las descripciones no estén vacías
+      if (_formMedidasControlesKey.currentState!.validate()) {
+        await _insertarMedidaControl();
+      }
+
       // if (_controles.isEmpty) {
       //   _showMsg('Agrega al menos un control.');
       //   return;
@@ -396,35 +594,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   void _back() {
     if (_currentStep > 0) {
       setState(() => _currentStep--);
-    }
-  }
-
-  Future<void> _selectDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fecha ?? now,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked != null) {
-      setState(() {
-        _fecha = picked;
-        // Convertimos la fecha seleccionada a String en formato yyyy-MM-dd
-        _fechaString = DateFormat('yyyy-MM-dd').format(picked);
-      });
-    }
-  }
-
-  void _addCustomRisk() {
-    final newRisk = _riesgoCustomCtrl.text.trim();
-    if (newRisk.isNotEmpty && !_riesgoCatalogo.contains(newRisk)) {
-      setState(() {
-        _riesgoCatalogo.add(newRisk);
-        _riesgosSeleccionados.add(newRisk);
-        _riesgosSeleccionadosString = _riesgosSeleccionados.join(", ");
-        _riesgoCustomCtrl.clear();
-      });
     }
   }
 
@@ -474,31 +643,21 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey, // clave para abrir el drawer
-      endDrawer: Drawer(child: _drawerHeader(context)),
+      // endDrawer: Drawer(child: _drawerHeader(context)),
       backgroundColor: Colors.white,
-      // appBar: AppBar(title: Text("Seguridad/Protección")),
       appBar: AppBar(
         title: const Text('Seguridad/Protección'),
         actions: const [SizedBox(width: 8)],
       ),
       body: Stepper(
-        type: StepperType.vertical,
+        type: StepperType.horizontal,
         currentStep: _currentStep >= 0 ? _currentStep : 0,
-        // onStepTapped: (step) {
-        //   if (step == 0) {
-        //     toggleFirstStep();
-        //   } else {
-        //     setState(() {
-        //       _currentStep = step;
-        //     });
-        //   }
-        // },
         onStepContinue: _next,
         onStepCancel: _back,
         steps: [
           _stepDatosTarea(),
           _stepIdentificarPeligro(),
-          _stepEvaluarRiesgos(),
+          _stepEvaluacionRiesgos(),
           _stepMedidasControles(),
           _stepResumen(),
         ],
@@ -525,14 +684,17 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     );
   }
 
-  /// ---------- UI DE PASOS ----------
-
+  // ====================================================================
+  // ========================= UI DE STEP'S =============================
+  // ====================================================================
+  /// 1.- Datos Tarea
   Step _stepDatosTarea() {
     return Step(
-      title: GestureDetector(
-        onTap: toggleFirstStep,
-        child: const Text('Datos de la Tarea'),
-      ),
+      // title: GestureDetector(
+      //   onTap: toggleFirstStep,
+      //   child: const Text('Datos de la Tarea'),
+      // ),
+      title: Text(""),
       isActive: _currentStep >= 0,
       state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       content: Form(
@@ -540,6 +702,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         child: Column(
           // crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Text('Datos de la Tarea'),
             const SizedBox(height: 10),
             // Select Puestos
             CustomSelect<PuestoTrabajo>(
@@ -550,17 +713,30 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               onChanged: (value) {
                 setState(() => _selectedPuesto = value);
                 _idPuestoTrabajo = value!.id;
+                _nombrePuestoTrabajoResumen = value!.nombre;
                 // print("Seleccionado: ${value?.nombre}");
               },
-              onAdd: () {
-                // Aquí puedes abrir un diálogo para ingresar un nuevo valor
-                context.go("/ssoma/seguridad_proteccion/add_puesto");
+              onAdd: () async {
+                // Navegamos a la pantalla para agregar tareas
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AgregarPuestoTrabajo(),
+                  ),
+                );
 
                 setState(() {
                   _refreshPuestosTrabajo();
                 });
 
-                // print("Agregar nuevo elemento");
+                // Si se añadió/actualizó algo, refrescamos la lista
+                // if (result == true) {
+                //   setState(() {
+                //     _refreshPasosTarea();
+                //   });
+                // }
+                // context.go("/ssoma/seguridad_proteccion/add_puesto");
+                // _refreshPuestosTrabajo();
               },
               itemLabel: (puesto) => "${puesto.id}.- ${puesto.nombre}",
             ),
@@ -574,17 +750,30 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               onChanged: (value) {
                 setState(() => _selectedTarea = value);
                 _idTarea = value!.id;
+                _nombreTareaResumen = value!.nombre;
+                _pasosTareaResumen = value!.pasos;
 
                 // print("Seleccionado: ${value?.nombre} - ${value?.pasos}");
               },
-              onAdd: () {
-                // Aquí puedes abrir un diálogo para ingresar un nuevo valor
-                // print("Agregar nuevo elemento");
-                context.go("/ssoma/seguridad_proteccion/add_tareas");
+              onAdd: () async {
+                // Navegamos a la pantalla para agregar tareas
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AgregarPasosTareas()),
+                );
 
                 setState(() {
                   _refreshPasosTarea();
                 });
+                // Si se añadió/actualizó algo, refrescamos la lista
+                // if (result == true) {
+                //   setState(() {
+                //     _refreshPasosTarea();
+                //   });
+                // }
+
+                // context.push("/ssoma/seguridad_proteccion/add_tareas");
+                // _refreshPasosTarea();
               },
               itemLabel: (tarea) => "${tarea.id}.- ${tarea.pasos}",
             ),
@@ -595,12 +784,14 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     );
   }
 
+  /// 2.- Indentificar Peligro
   Step _stepIdentificarPeligro() {
     return Step(
-      title: GestureDetector(
-        onTap: toggleFirstStep,
-        child: const Text('Identificar Peligro'),
-      ),
+      // title: GestureDetector(
+      //   onTap: toggleFirstStep,
+      //   child: const Text('Identificar Peligro'),
+      // ),
+      title: Text(""),
       isActive: _currentStep >= 1,
       state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       content: Form(
@@ -658,7 +849,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             LabeledField(
               label: 'Gravedad',
               child: TextFormField(
-                controller: _gravedadCtrl,
+                controller: _gravedadPeligroCtrl,
                 maxLines: 3,
                 decoration: const InputDecoration(
                   hintText: 'Describe la gravedad del peligro',
@@ -694,7 +885,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                   child: LabeledField(
                     label: 'Estado/Std',
                     child: TextFormField(
-                      controller: _stdCtrl,
+                      controller: _stdPeligroCtrl,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),
@@ -708,7 +899,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               label: "Foto del incidente",
               onImageSelected: (url) {
                 print("URL de la imagen en S3: $url");
-                _imagenCtrl.text = url ?? "";
+                _imagenPeligroCtrl.text = url ?? "";
                 // if (file != null) {
                 //   print("Imagen seleccionada: ${file.path}");
                 // }
@@ -721,13 +912,15 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     );
   }
 
-  Step _stepEvaluarRiesgos() {
+  /// 3.- Evaluacion Peligro
+  Step _stepEvaluacionRiesgos() {
     return Step(
-      title: const Text('Evaluación Riesgos'),
+      // title: const Text('Evaluación Riesgos'),
+      title: Text(""),
       isActive: _currentStep >= 2,
       state: _currentStep > 1 ? StepState.complete : StepState.indexed,
       content: Form(
-          key: _formEvaluacionkey,
+        key: _formEvaluacionkey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -736,7 +929,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               'Peligro y Tipo:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-        
+
             const SizedBox(height: 15),
             // Select Peligro
             CustomSelect<Peligro>(
@@ -751,7 +944,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               },
               itemLabel: (puesto) => "${puesto.id}.- ${puesto.nombre}",
             ),
-        
+
             const SizedBox(height: 15),
             // Tipo de Riesgo
             TextField(
@@ -772,7 +965,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _riesgoCustomCtrl,
+                    controller: _nombresRiesgosCustomCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Agregar riesgo nuevo',
                       border: OutlineInputBorder(),
@@ -802,7 +995,9 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     // height: 50,
                     child: Text(
                       r,
-                      style: const TextStyle(fontSize: 12), //  Texto más pequeño
+                      style: const TextStyle(
+                        fontSize: 12,
+                      ), //  Texto más pequeño
                       // softWrap: false, //  Permite salto de línea
                       // overflow: TextOverflow.visible,
                     ),
@@ -835,7 +1030,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               }).toList(),
             ),
             const SizedBox(height: 15),
-        
+
             // Probabilidades
             const Text(
               'PROBABILIDAD:',
@@ -915,19 +1110,41 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     );
   }
 
+  /// 4.- Medidas Controles
   Step _stepMedidasControles() {
     return Step(
-      // title: const Text('Controles'),
-      title: const Text('Medidas de Control'),
+      // title: const Text('Medidas de Control'),
+      title: Text(""),
       isActive: _currentStep >= 3,
       state: _currentStep > 2 ? StepState.complete : StepState.indexed,
       content: Form(
-        key: _formControlesKey,
+        key: _formMedidasControlesKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Agrega y Seleciona uno o varios controles:',
+              '1.- Seleciona el riesgo respectivo:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            // Select Peligro
+            CustomSelect<EvaluacionRiesgo>(
+              label: 'Riesgos detectados:',
+              items: _allEvaluacionRiesgos,
+              // initialValue: _allPuestos.isNotEmpty ? _allPuestos[0] : null,
+              initialValue: _selectedEvaluacionRiesgo,
+              onChanged: (value) {
+                setState(() => _selectedEvaluacionRiesgo = value);
+                _idEvaluacionRiesgo = value!.id;
+              },
+              itemLabel: (evaluacionRiesgo) =>
+                  "${evaluacionRiesgo.id}.- ${evaluacionRiesgo.nombre}",
+            ),
+
+            const SizedBox(height: 15),
+
+            Text(
+              '2.- Agrega y Seleciona uno o varios controles:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
@@ -935,8 +1152,18 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 // onPressed: _addControl,
-                onPressed: () {
-                  context.go("/ssoma/seguridad_proteccion/add_controles");
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AgregarControl(),
+                    ),
+                  );
+
+                  // context.go("/ssoma/seguridad_proteccion/add_controles");
+                  setState(() {
+                    _refreshControles();
+                  });
                 },
                 icon: const Icon(Icons.add),
                 label: const Text('Agregar control'),
@@ -949,7 +1176,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               children: _allControles.map((r) {
                 final id = r.id as int;
                 final nombre = r.nombre;
-                final selected = _riesgosSelec.contains(id);
+                final selected = _riesgosSelected.contains(id);
                 return FilterChip(
                   label: SizedBox(
                     child: Text(
@@ -975,12 +1202,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                   onSelected: (val) {
                     setState(() {
                       if (val) {
-                        _riesgosSelec.add(id);
-                        _cargarRiesgos();
+                        _riesgosSelected.add(id);
+                        _refreshControles();
                         // _refreshPuestos();
                       } else {
-                        _riesgosSelec.remove(id);
-                        _cargarRiesgos();
+                        _riesgosSelected.remove(id);
+                        _refreshControles();
                         // _refreshPuestos();
                       }
                     });
@@ -992,7 +1219,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             ),
             const SizedBox(height: 15),
             Text(
-              'Datos del responsable:',
+              '3.- Datos del responsable:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
@@ -1066,94 +1293,158 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 ),
               ],
             ),
-            // ListView.separated(
-            //   separatorBuilder: (_, __) => const SizedBox(height: 12),
-            //   shrinkWrap: true,
-            //   physics: const NeverScrollableScrollPhysics(),
-            //   itemCount: _controles.length,
-            //   itemBuilder: (context, index) {
-            //     final c = _controles[index];
-            //     return Container(
-            //       padding: const EdgeInsets.all(12),
-            //       decoration: BoxDecoration(
-            //         color: Colors.grey.shade100,
-            //         borderRadius: BorderRadius.circular(12),
-            //         border: Border.all(color: Colors.grey.shade300),
-            //       ),
-            //       child: Column(
-            //         children: [
-            //           Row(
-            //             children: [
-            //               Expanded(
-            //                 child: DropdownButtonFormField<ControlType>(
-            //                   value: c.type,
-            //                   decoration: const InputDecoration(
-            //                     labelText: 'Tipo de control',
-            //                     border: OutlineInputBorder(),
-            //                   ),
-            //                   items: ControlType.values.map((t) {
-            //                     return DropdownMenuItem(
-            //                       value: t,
-            //                       child: Text(t.label),
-            //                     );
-            //                   }).toList(),
-            //                   onChanged: (val) {
-            //                     if (val == null) return;
-            //                     setState(() => c.type = val);
-            //                   },
-            //                 ),
-            //               ),
-            //               const SizedBox(width: 8),
-            //               IconButton(
-            //                 tooltip: 'Eliminar',
-            //                 onPressed: _controles.length > 1
-            //                     ? () => _removeControl(index)
-            //                     : null,
-            //                 icon: const Icon(Icons.delete_outline),
-            //               ),
-            //             ],
-            //           ),
-            //           const SizedBox(height: 8),
-            //           TextFormField(
-            //             initialValue: c.description,
-            //             onChanged: (val) => c.description = val,
-            //             decoration: const InputDecoration(
-            //               labelText: 'Descripción / medida',
-            //               hintText:
-            //                   'Ej.: Línea de vida, barandas, procedimiento, EPP específico…',
-            //               border: OutlineInputBorder(),
-            //             ),
-            //             validator: (v) => (v == null || v.trim().isEmpty)
-            //                 ? 'Requerido'
-            //                 : null,
-            //           ),
-            //         ],
-            //       ),
-            //     );
-            //   },
-            // ),
             const SizedBox(height: 12),
+            // Probabilidades
+            const Text(
+              '4.- Probabilidades:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                LabeledSelectNum(
+                  label: "Índ. Personas Exp. (A)",
+                  onChanged: (val) {
+                    // debugPrint("A -> $val");
+                    setState(() {
+                      _personaExpuestaEval = val;
+                      _countProbabilidadEval += val!;
+                    });
+                  },
+                ),
+                const SizedBox(width: 10),
+                LabeledSelectNum(
+                  label: "Índ. Procedimientos (B)",
+                  onChanged: (val) {
+                    // debugPrint("B -> $val");
+                    setState(() {
+                      _procedimientoExistenteEval = val;
+                      _countProbabilidadEval += val!;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                LabeledSelectNum(
+                  label: "Índ. Capacitación (C)",
+                  onChanged: (val) {
+                    // debugPrint("C -> $val");
+                    setState(() {
+                      _capacitacionEval = val;
+                      _countProbabilidadEval += val!;
+                    });
+                  },
+                ),
+                const SizedBox(width: 10),
+                LabeledSelectNum(
+                  label: "Índ. Exposición al Riesgo (D)",
+                  onChanged: (val) {
+                    // debugPrint("D -> $val");
+                    setState(() {
+                      _exposicionRiesgoEval = val;
+                      _countProbabilidadEval += val!;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                LabeledSelectNum(
+                  label: "ÍNDICE DE SEVERIDAD",
+                  onChanged: (val) {
+                    setState(() {
+                      _severidadEval = val;
+                      _countFase = val! * _countProbabilidadEval;
+                    });
+                  },
+                ),
+                const Spacer(), // para alinear solo uno en esta fila
+              ],
+            ),
+            const SizedBox(height: 15),
 
-            PhotoPicker(label: "Imagen/Evidencia"),
+            PhotoPicker(label: "5.- Imagen/Evidencia"),
           ],
         ),
       ),
     );
   }
 
+  /// 5.- Resumen
   Step _stepResumen() {
     return Step(
-      title: const Text('Revisión'),
+      // title: const Text('Revisión'),
+      title: Text(""),
       isActive: _currentStep >= 3,
       state: _currentStep == 3 ? StepState.editing : StepState.indexed,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Padding(
+          //   padding: const EdgeInsets.all(16.0),
+          //   child: GridView.count(
+          //     crossAxisCount: 2,
+          //     crossAxisSpacing: 16,
+          //     mainAxisSpacing: 16,
+          //     children: const [
+          //       CustomIconButton(
+          //         icon: Icons.warning,
+          //         label: 'Registros de Peligros',
+          //         route: '/peligros',
+          //         color: Colors.redAccent,
+          //       ),
+          //       CustomIconButton(
+          //         icon: Icons.shield,
+          //         label: 'Medidas de Control',
+          //         route: '/medidas',
+          //         color: Colors.green,
+          //       ),
+          //       CustomIconButton(
+          //         icon: Icons.assignment_turned_in,
+          //         label: 'Control',
+          //         route: '/control',
+          //         color: Colors.orange,
+          //       ),
+          //       CustomIconButton(
+          //         icon: Icons.analytics,
+          //         label: 'Evaluación de Riesgo',
+          //         route: '/evaluacion',
+          //         color: Colors.blue,
+          //       ),
+          //     ],
+          //   ),
+          // ),
           SummaryCard(
-            title: 'Datos del peligro',
+            title: '1.- Datos del puesto de trabajo',
+            children: [
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _kv(
+              //         'Puesto de trabajo',
+              //         _nombrePuestoTrabajoResumen,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 12),
+              //     Expanded(child: _kv('Tarea:', _nombreTareaResumen)),
+              //   ],
+              // ),
+              _kv('Puesto de trabajo', _nombrePuestoTrabajoResumen),
+              _kv('Tarea', _nombreTareaResumen),
+
+              _kv('Pasos', _pasosTareaResumen),
+            ],
+          ),
+          SummaryCard(
+            title: '2.- Datos del peligro',
             children: [
               _kv('Peligro', _nombrePeligroCtrl.text),
-              _kv('Descripción', _gravedadCtrl.text),
+              _kv('Descripción', _gravedadPeligroCtrl.text),
               // Row(
               //   children: [
               //     Expanded(child: _kv('Área/Proceso', _areaCtrl.text)),
@@ -1162,7 +1453,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               //   ],
               // ),
               // _kv('Área/Proceso', _areaCtrl.text),
-              _kv('Estado', _stdCtrl.text),
+              _kv('Estado', _stdPeligroCtrl.text),
               _kv(
                 'Fecha',
                 _fecha == null
@@ -1173,7 +1464,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
           ),
           const SizedBox(height: 12),
           SummaryCard(
-            title: 'Riesgos asociados',
+            title: '3.- Evaluación de Riesgos asociados',
             children: [
               Wrap(
                 spacing: 8,
@@ -1182,122 +1473,164 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     .map((r) => Chip(label: Text(r)))
                     .toList(),
               ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Ind. Persona Expuesta',
+                      _personaExpuestaIden.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv(
+                      'Ind. Procedimiento Esistente',
+                      _procedimientoExistenteIden.toString(),
+                    ),
+                  ),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Ind. Capacitacion',
+                      _capacitacionIden.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv(
+                      'Ind. Exp. Riesgo',
+                      _exposicionRiesgoIden.toString(),
+                    ),
+                  ),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Ind. Probabilidad',
+                      _countProbabilidadIden.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv('Ind. Severidad', _severidadIden.toString()),
+                  ),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(child: _kv('Ind. Fase', _countFase.toString())),
+                  const SizedBox(width: 12),
+                ],
+              ),
+
+              // _kv('Ind. Persona Expuesta', _personaExpuestaIden.toString()),
+              // _kv(
+              //   'Ind. Procedimiento Esistente',
+              //   _procedimientoExistenteIden.toString(),
+              // ),
+              // _kv('Ind. Capacitacion', _capacitacionIden.toString()),
+              // _kv('Ind. Exp. Riesgo', _exposicionRiesgoIden.toString()),
+              // _kv('Ind. Probabilidad', _countProbabilidadIden.toString()),
+              // _kv('Ind. Severidad', _severidadIden.toString()),
+              // _kv('Ind. Fase', _countFase.toString()),
             ],
           ),
           const SizedBox(height: 12),
           SummaryCard(
-            title: 'Controles',
-            children: _controles.isEmpty
-                ? [const Text('Sin controles')]
-                : _controles
-                      .map(
-                        (c) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.shield_moon),
-                          title: Text(c.description),
-                          subtitle: Text(c.type.label),
-                        ),
-                      )
-                      .toList(),
+            title: '4.- Medidas de Control',
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Eval. Persona Expuesta',
+                      _personaExpuestaEval.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv(
+                      'Eval. Procedimiento Existente',
+                      _procedimientoExistenteEval.toString(),
+                    ),
+                  ),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Eval. Capacitacion',
+                      _capacitacionEval.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv(
+                      'Eval. Exp. Riesgo',
+                      _exposicionRiesgoEval.toString(),
+                    ),
+                  ),
+                ],
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _kv(
+                      'Eval. Probabilidad',
+                      _countProbabilidadEval.toString(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _kv('Eval. Severidad', _severidadEval.toString()),
+                  ),
+                ],
+              ),
+
+              // _kv('Eval. Persona Expuesta', _personaExpuestaEval.toString()),
+              // _kv(
+              //   'Eval. Procedimiento Esistente',
+              //   _procedimientoExistenteEval.toString(),
+              // ),
+              // _kv('Eval. Capacitacion', _capacitacionEval.toString()),
+              // _kv('Eval. Exp. Riesgo', _exposicionRiesgoEval.toString()),
+              // _kv('Eval. Probabilidad', _countProbabilidadEval.toString()),
+              // _kv('Eval. Severidad', _severidadEval.toString()),
+            ],
           ),
-          const SizedBox(height: 8),
+          //   SummaryCard(
+          //     title: 'Controles',
+          //     children: _controles.isEmpty
+          //         ? [const Text('Sin controles')]
+          //         : _controles
+          //               .map(
+          //                 (c) => ListTile(
+          //                   dense: true,
+          //                   contentPadding: EdgeInsets.zero,
+          //                   leading: const Icon(Icons.shield_moon),
+          //                   title: Text(c.description),
+          //                   subtitle: Text(c.type.label),
+          //                 ),
+          //               )
+          //               .toList(),
+          // ),
+          const SizedBox(height: 12),
           const Text('Si todo es correcto, presiona "Registrar".'),
+          const SizedBox(height: 12),
         ],
       ),
-    );
-  }
-
-  // ===============================
-  // Widgets
-  // ===============================
-  Widget _drawerHeader(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        DrawerHeader(
-          decoration: BoxDecoration(color: Color.fromRGBO(189, 155, 36, 1)),
-          margin: EdgeInsets.only(bottom: 5.0),
-          child: Text(
-            'SSOMA',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 25,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: Icon(Icons.person, color: Color.fromRGBO(5, 5, 5, 1)),
-          title: Text("Perfil"),
-          onTap: () {
-            Navigator.pop(context);
-            print("Ir a perfil");
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.work, color: Color.fromRGBO(5, 5, 5, 1)),
-          title: Text("Otro Rol"),
-          onTap: () {
-            // Navigator.pop(context);
-            context.go('/roles');
-            print("Ir a configuración");
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.settings, color: Color.fromRGBO(5, 5, 5, 1)),
-          title: Text("Configuración"),
-          onTap: () {
-            Navigator.pop(context);
-            print("Ir a configuración");
-          },
-        ),
-        ListTile(
-          leading: Icon(Icons.exit_to_app, color: Color.fromRGBO(5, 5, 5, 1)),
-          title: Text("Cerrar sesión"),
-          onTap: () {
-            Navigator.pop(context);
-            print("Cerrar sesión");
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _titulo() {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            context.go("/muni");
-          },
-          child: Icon(Icons.arrow_back, color: Colors.black, size: 30),
-        ),
-        const SizedBox(width: 20),
-        Text(
-          "Seguridad/Protección",
-          style: TextStyle(
-            color: const Color.fromRGBO(75, 86, 117, 1),
-            fontSize: 20, // Escalable
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _iconActions() {
-    return Row(
-      children: [
-        Icon(Icons.mail, color: Color.fromRGBO(5, 5, 5, 1), size: 35),
-        SizedBox(width: 19),
-        GestureDetector(
-          onTap: () {
-            _scaffoldKey.currentState?.openEndDrawer();
-          },
-          child: Icon(Icons.menu, color: Colors.black, size: 43),
-        ),
-      ],
     );
   }
 }

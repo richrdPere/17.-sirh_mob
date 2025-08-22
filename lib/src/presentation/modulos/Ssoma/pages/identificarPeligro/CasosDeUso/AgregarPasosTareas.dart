@@ -208,7 +208,7 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
                   _stdController.text = "";
 
                   // Ocultar Bottom sheet
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                   print("Agregar Tarea");
                 },
                 child: Padding(

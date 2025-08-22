@@ -1,5 +1,6 @@
 import 'package:sirh_mob/src/domain/models/ssoma_models/Control.dart';
 import 'package:sirh_mob/src/domain/models/ssoma_models/EvaluacionRiesgo.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/MedidasControl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -198,7 +199,7 @@ class DatabaseSsoma {
       await delete('ss_control', 'con_id = ?', [id]);
 
   // ===========================================
-  // 5.- MEDIDAS DE RIESGO
+  // 5.- EVALUACION DE RIESGO
   // ===========================================
   Future<int> insertEvaluacionRiesgo(EvaluacionRiesgo evaluacionRiesgo) async =>
       await insert('ss_evaluacion_riesgo', evaluacionRiesgo.toMap());
@@ -221,8 +222,61 @@ class DatabaseSsoma {
         [evaluacionRiesgo.id],
       );
 
+  Future<int> updateEvaluacionRiesgoById(
+    int id,
+    Map<String, dynamic> datos,
+  ) async {
+    final dbClient = await database;
+    return await dbClient.update(
+      'ss_evaluacion_riesgo', // Nombre de la tabla
+      datos,
+      where: 'eri_id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deleteEvaluacionRiesgo(int id) async =>
       await delete('ss_evaluacion_riesgo', 'eri_id = ?', [id]);
+
+  // ===========================================
+  // 6.- MEDIDAS DE CONTROL
+  // ===========================================
+  Future<int> insertMedidasControl(MedidaControl medidaControl) async =>
+      await insert('ss_medida_control', medidaControl.toMap());
+
+  Future<List<MedidaControl>> getMedidasControl() async {
+    final maps = await queryAll('ss_medida_control');
+    return maps.map((m) => MedidaControl.fromMap(m)).toList();
+  }
+
+  Future<MedidaControl?> getMedidasControlById(int id) async {
+    final map = await queryById('ss_medida_control', 'mec_id', id);
+    return map != null ? MedidaControl.fromMap(map) : null;
+  }
+
+  Future<int> updateMedidaControl(MedidaControl medidaControl) async =>
+      await update(
+        'ss_medida_control',
+        medidaControl.toMap(),
+        'mec_id = ?',
+        [medidaControl.id],
+      );
+
+  Future<int> updateMedidaControlById(
+    int id,
+    Map<String, dynamic> datos,
+  ) async {
+    final dbClient = await database;
+    return await dbClient.update(
+      'ss_medida_control', // Nombre de la tabla
+      datos,
+      where: 'mec_id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> deleteMedidaControl(int id) async =>
+      await delete('ss_medida_control', 'mec_id = ?', [id]);
 
   // Aquí puedes seguir con Tarea, Control, EvaluacionRiesgo, etc.
 }

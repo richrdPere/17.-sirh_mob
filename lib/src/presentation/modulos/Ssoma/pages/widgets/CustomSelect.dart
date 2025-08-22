@@ -33,6 +33,24 @@ class _CustomSelectState<T> extends State<CustomSelect<T>> {
   }
 
   @override
+  void didUpdateWidget(covariant CustomSelect<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Si la lista de items cambia, actualizamos la selección
+    if (oldWidget.items != widget.items) {
+      setState(() {
+        // Si el valor actual sigue existiendo en la nueva lista, lo mantenemos.
+        // Si no, lo limpiamos.
+        if (widget.items.contains(selectedValue)) {
+          selectedValue = selectedValue;
+        } else {
+          selectedValue = null;
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Row(
       children: [
@@ -50,13 +68,23 @@ class _CustomSelectState<T> extends State<CustomSelect<T>> {
               ),
             ),
             value: selectedValue,
+            isExpanded:
+                true, //  Permite que el dropdown use todo el ancho disponible
             items: widget.items
                 .map(
                   (item) => DropdownMenuItem<T>(
                     value: item,
-                    child: Text(
-                      widget.itemLabel(item),
-                      style: TextStyle(fontSize: 14),
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        maxWidth: 250, //  Ajustamos un ancho máximo
+                      ),
+                      child: Text(
+                        widget.itemLabel(item),
+                        style: TextStyle(fontSize: 14),
+                        softWrap: true, //  Permite el salto de línea automático
+                        overflow:
+                            TextOverflow.fade, //  Evita cortar el texto
+                      ),
                     ),
                   ),
                 )

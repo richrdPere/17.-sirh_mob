@@ -21,6 +21,7 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
   // 2.- Todos los puestos
   List<PuestoTrabajo> _allPuestosTrabajo = [];
   bool _isLoading = true;
+  bool isActive = false; // Estado inicial del switch
 
   // 3.- Campos
   final TextEditingController _nombreController = TextEditingController();
@@ -121,7 +122,7 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
   }
 
   // 6.- Form Tarea
-  void showBottomSheet(int? id) async {
+  void showBottomSheet(int? id, bool isActive) async {
     if (id != null) {
       final existingData = _allPuestosTrabajo.firstWhere((e) => e.id == id);
       _nombreController.text = existingData.nombre;
@@ -170,13 +171,29 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
               ),
             ),
             SizedBox(height: 10),
-            TextField(
-              controller: _stdController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Estado std",
-              ),
+            Switch(
+              value: isActive,
+              onChanged: (value) {
+                setState(() {
+                  isActive = value;
+                });
+              },
+              activeColor:
+                  Colors.white, // Color del círculo cuando está activado
+              activeTrackColor:
+                  Colors.green, // Color de la pista cuando está activado
+              inactiveThumbColor:
+                  Colors.white, // Color del círculo cuando está desactivado
+              inactiveTrackColor:
+                  Colors.grey, // Color de la pista cuando está desactivado
             ),
+            // TextField(
+            //   controller: _stdController,
+            //   decoration: InputDecoration(
+            //     border: OutlineInputBorder(),
+            //     hintText: "Estado std",
+            //   ),
+            // ),
             SizedBox(height: 10),
             Center(
               child: ElevatedButton(
@@ -198,7 +215,7 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                   _refreshPuestoTrabajo();
 
                   // Ocultar Bottom sheet
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                   print("Agregar Puesto");
                 },
                 child: Padding(
@@ -276,13 +293,29 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                               size: 20,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              "STD: ${puesto.std}",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[700],
-                              ),
-                            ),
+                            // Switch(
+                            //   value: isActive,
+                            //   onChanged: (value) {
+                            //     setState(() {
+                            //       isActive = value;
+                            //     });
+                            //   },
+                            //   activeColor: Colors
+                            //       .white, // Color del círculo cuando está activado
+                            //   activeTrackColor: Colors
+                            //       .green, // Color de la pista cuando está activado
+                            //   inactiveThumbColor: Colors
+                            //       .white, // Color del círculo cuando está desactivado
+                            //   inactiveTrackColor: Colors
+                            //       .grey, // Color de la pista cuando está desactivado
+                            // ),
+                            // Text(
+                            //   "STD: ${puesto.std}",
+                            //   style: TextStyle(
+                            //     fontSize: 14,
+                            //     color: Colors.grey[700],
+                            //   ),
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -371,7 +404,7 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                                 "Editar",
                                 style: TextStyle(color: Colors.white),
                               ),
-                              onPressed: () => showBottomSheet(puesto.id),
+                              onPressed: () => showBottomSheet(puesto.id, isActive),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton.icon(
@@ -425,10 +458,7 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => {
-          showBottomSheet(null),
-          _refreshPuestoTrabajo()  
-        },
+        onPressed: () => {showBottomSheet(null, isActive), _refreshPuestoTrabajo()},
         child: Icon(Icons.add),
       ),
     );
