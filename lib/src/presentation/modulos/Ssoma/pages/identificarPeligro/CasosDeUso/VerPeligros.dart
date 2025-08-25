@@ -97,7 +97,7 @@ class _VerPeligrosState extends State<VerPeligros> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      "Gravedad: ${p.gravedad}\nFecha: ${p.fechaCreacion}\nId Tarea: ${p.tareaId}\nId Puesto de Trabajo: ${p.puestoTrabajoId}",
+                      "Gravedad: ${p.gravedad}\nFecha: ${p.fechaCreacion}\nId Tarea: ${p.tareaId}\nId Puesto de Trabajo: ${p.puestoTrabajoId}\nId STD: ${p.std}",
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,

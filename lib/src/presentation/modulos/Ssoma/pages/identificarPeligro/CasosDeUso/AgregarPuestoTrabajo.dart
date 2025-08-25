@@ -7,6 +7,12 @@ import 'package:sirh_mob/src/data/datasource/local/db_sqlite/database_ssoma.dart
 // Modelo
 import 'package:sirh_mob/src/domain/models/ssoma_models/PuestoTrabajo.dart';
 
+class MetaOption {
+  final int id;
+  final String label;
+  const MetaOption(this.id, this.label);
+}
+
 class AgregarPuestoTrabajo extends StatefulWidget {
   const AgregarPuestoTrabajo({super.key});
 
@@ -21,19 +27,44 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
   // 2.- Todos los puestos
   List<PuestoTrabajo> _allPuestosTrabajo = [];
   bool _isLoading = true;
-  bool isActive = false; // Estado inicial del switch
+  bool _switchValue = false; // Estado inicial del switch
+
+  final List<MetaOption> _metas = const [
+    MetaOption(289, 'Meta 289'),
+    MetaOption(79, 'Meta 79'),
+    MetaOption(38, 'Meta 38'),
+    MetaOption(45, 'Meta 45'),
+  ];
 
   // 3.- Campos
   final TextEditingController _nombreController = TextEditingController();
+
   final TextEditingController _metaController = TextEditingController();
+  int? _selectedMetaId;
+  // final ValueChanged<String?> onMetaChanged = null;
+
   final TextEditingController _descripcionController = TextEditingController();
-  final TextEditingController _stdController = TextEditingController();
+  String _stdController = "desactivado"; // Valor por defecto
 
   // 4.- Inicializar
   @override
   void initState() {
     super.initState();
+    _nombreController.addListener(() {
+      // Forzar a mayúsculas
+      _nombreController.value = _nombreController.value.copyWith(
+        text: _nombreController.text.toUpperCase(),
+        selection: _nombreController.selection,
+      );
+    });
     _refreshPuestoTrabajo();
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _metaController.dispose();
+    super.dispose();
   }
 
   // 5.- Funciones
@@ -52,9 +83,10 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
     await db.insertPuestoTrabajo(
       PuestoTrabajo(
         nombre: _nombreController.text,
-        areaMetaId: int.parse(_metaController.text),
+        // areaMetaId: int.parse(_metaController.text),
+        areaMetaId: _selectedMetaId!,
         descripcion: _descripcionController.text,
-        std: _stdController.text,
+        std: _stdController,
         usuarioCreacion: 'admin',
         fechaCreacion: DateTime.now(),
         usuarioModificacion: '',
@@ -70,9 +102,10 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
       PuestoTrabajo(
         id: id,
         nombre: _nombreController.text,
-        areaMetaId: int.parse(_metaController.text),
+        // areaMetaId: int.parse(_metaController.text),
+        areaMetaId: _selectedMetaId!,
         descripcion: _descripcionController.text,
-        std: _stdController.text,
+        std: _stdController,
         usuarioCreacion: 'system', //  ficticio
         fechaCreacion: DateTime(2025, 01, 01), //  ficticio
         usuarioModificacion: 'admin_update', //  ficticio para update
@@ -94,6 +127,9 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
     _refreshPuestoTrabajo();
   }
 
+  // =============================
+  // 6.- FUNCIONES AUXILIARES
+  // =============================
   // Formatear Fecha: Si es string
   String formatFechaHoraString(String fecha) {
     try {
@@ -121,114 +157,172 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
     }
   }
 
-  // 6.- Form Tarea
+  // Convertir a mayuscula
+  String toUpperCaseText(String value) {
+    return value.toUpperCase();
+  }
+
+  // =============================
+  // 7.- MODAL PARA AGREGAR / EDITAR
+  // =============================
   void showBottomSheet(int? id, bool isActive) async {
     if (id != null) {
       final existingData = _allPuestosTrabajo.firstWhere((e) => e.id == id);
       _nombreController.text = existingData.nombre;
-      _metaController.text = existingData.areaMetaId.toString();
+      // _metaController.text = existingData.areaMetaId.toString();
+      _selectedMetaId = existingData.areaMetaId; // << importar este valor
       _descripcionController.text = existingData.descripcion;
-      _stdController.text = existingData.std;
+      _stdController = existingData.std;
+    } else {
+      // Nuevo registro: limpiar selección
+      _selectedMetaId = null;
+      _nombreController.clear();
+      _descripcionController.clear();
+      _stdController = "desactivado";
     }
 
     showModalBottomSheet(
       elevation: 5,
       isScrollControlled: true,
       context: context,
-      builder: (_) => Container(
-        padding: EdgeInsets.only(
-          top: 30,
-          left: 15,
-          right: 15,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 50,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TextField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Nombre",
-              ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              top: 30,
+              left: 15,
+              right: 15,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 50,
             ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _metaController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Meta",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _descripcionController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Descripción",
-              ),
-            ),
-            SizedBox(height: 10),
-            Switch(
-              value: isActive,
-              onChanged: (value) {
-                setState(() {
-                  isActive = value;
-                });
-              },
-              activeColor:
-                  Colors.white, // Color del círculo cuando está activado
-              activeTrackColor:
-                  Colors.green, // Color de la pista cuando está activado
-              inactiveThumbColor:
-                  Colors.white, // Color del círculo cuando está desactivado
-              inactiveTrackColor:
-                  Colors.grey, // Color de la pista cuando está desactivado
-            ),
-            // TextField(
-            //   controller: _stdController,
-            //   decoration: InputDecoration(
-            //     border: OutlineInputBorder(),
-            //     hintText: "Estado std",
-            //   ),
-            // ),
-            SizedBox(height: 10),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (id == null) {
-                    await _addPasosTarea();
-                  }
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    // Campo Nombre - Flexible para adaptarse
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _nombreController,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: "Nombre",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
 
-                  if (id != null) {
-                    await _updatePasosTarea(id);
-                  }
-
-                  _nombreController.text = "";
-                  _metaController.text = "";
-                  _descripcionController.text = "";
-                  _stdController.text = "";
-
-                  // Actualizar Lista de Puestos
-                  _refreshPuestoTrabajo();
-
-                  // Ocultar Bottom sheet
-                  Navigator.of(context).pop(true);
-                  print("Agregar Puesto");
-                },
-                child: Padding(
-                  padding: EdgeInsets.all(18),
-                  child: Text(
-                    id == null ? "Agregar Puesto" : "Actualizar Puesto",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedMetaId,
+                        items: _metas
+                            .map(
+                              (meta) => DropdownMenuItem<int>(
+                                value: meta.id,
+                                child: Text(meta.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setModalState(() {
+                            _selectedMetaId = val;
+                          });
+                          // opcional: sync con el controller si lo usas en otra parte
+                          _metaController.text = val?.toString() ?? '';
+                        },
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Meta",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: _descripcionController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: "Descripción",
                   ),
                 ),
-              ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text("STD: "),
+                    Switch(
+                      value: _stdController == 'activado' ? true : false,
+                      onChanged: (value) {
+                        setModalState(() {
+                          isActive = value;
+                          _stdController = value ? "activado" : "desactivado";
+                        });
+                      },
+                      activeColor: Colors
+                          .white, // Color del círculo cuando está activado
+                      activeTrackColor: Colors
+                          .green, // Color de la pista cuando está activado
+                      inactiveThumbColor: Colors
+                          .white, // Color del círculo cuando está desactivado
+                      inactiveTrackColor: Colors
+                          .grey, // Color de la pista cuando está desactivado
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 10),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (id == null) {
+                        await _addPasosTarea();
+                      }
+
+                      if (id != null) {
+                        await _updatePasosTarea(id);
+                      }
+
+                      _nombreController.text = "";
+                      _metaController.text = "";
+                      _descripcionController.text = "";
+                      _stdController = "desactivado";
+
+                      // Actualizar Lista de Puestos
+                      _refreshPuestoTrabajo();
+
+                      // Ocultar Bottom sheet
+                      Navigator.of(context).pop(true);
+                      
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text(
+                        id == null ? "Agregar Puesto" : "Actualizar Puesto",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -238,8 +332,8 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
     return Scaffold(
       backgroundColor: const Color(0xFFECEAF4),
       appBar: AppBar(title: const Text("Agregar Puestos")),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+      body: _allPuestosTrabajo.isEmpty
+          ? const Center(child: Text("No hay Puestos de Trabajo registrados"))
           : ListView.builder(
               itemCount: _allPuestosTrabajo.length,
               itemBuilder: (context, index) {
@@ -293,29 +387,14 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                               size: 20,
                             ),
                             const SizedBox(width: 6),
-                            // Switch(
-                            //   value: isActive,
-                            //   onChanged: (value) {
-                            //     setState(() {
-                            //       isActive = value;
-                            //     });
-                            //   },
-                            //   activeColor: Colors
-                            //       .white, // Color del círculo cuando está activado
-                            //   activeTrackColor: Colors
-                            //       .green, // Color de la pista cuando está activado
-                            //   inactiveThumbColor: Colors
-                            //       .white, // Color del círculo cuando está desactivado
-                            //   inactiveTrackColor: Colors
-                            //       .grey, // Color de la pista cuando está desactivado
-                            // ),
-                            // Text(
-                            //   "STD: ${puesto.std}",
-                            //   style: TextStyle(
-                            //     fontSize: 14,
-                            //     color: Colors.grey[700],
-                            //   ),
-                            // ),
+                            Text(
+                              "${puesto.std}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -404,7 +483,8 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                                 "Editar",
                                 style: TextStyle(color: Colors.white),
                               ),
-                              onPressed: () => showBottomSheet(puesto.id, isActive),
+                              onPressed: () =>
+                                  showBottomSheet(puesto.id, _switchValue),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton.icon(
@@ -431,34 +511,14 @@ class _AgregarPuestoTrabajoState extends State<AgregarPuestoTrabajo> {
                       ],
                     ),
                   ),
-                  // child: ListTile(
-                  //   title: Padding(
-                  //     padding: EdgeInsets.symmetric(vertical: 5),
-                  //     child: Text(
-                  //       puesto.nombre,
-                  //       style: TextStyle(fontSize: 20),
-                  //     ),
-                  //   ),
-                  //   subtitle: Text("Meta: ${puesto.areaMetaId}"),
-                  //   trailing: Row(
-                  //     mainAxisSize: MainAxisSize.min,
-                  //     children: [
-                  //       IconButton(
-                  //         icon: Icon(Icons.edit, color: Colors.blue),
-                  //         onPressed: () => showBottomSheet(puesto.id),
-                  //       ),
-                  //       IconButton(
-                  //         icon: Icon(Icons.delete, color: Colors.red),
-                  //         onPressed: () => _deletePasosTarea(puesto.id!),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
                 );
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => {showBottomSheet(null, isActive), _refreshPuestoTrabajo()},
+        onPressed: () => {
+          showBottomSheet(null, _switchValue),
+          _refreshPuestoTrabajo(),
+        },
         child: Icon(Icons.add),
       ),
     );

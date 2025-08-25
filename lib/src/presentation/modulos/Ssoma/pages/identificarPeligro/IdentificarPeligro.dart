@@ -87,6 +87,12 @@ class HazardReport {
   };
 }
 
+class RiesgoTipoOption {
+  final int id;
+  final String label;
+  const RiesgoTipoOption(this.id, this.label);
+}
+
 /// ---------- PÁGINA PRINCIPAL ----------
 class IdentificarPeligro extends StatefulWidget {
   const IdentificarPeligro({super.key});
@@ -131,8 +137,10 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   final _nombrePeligroCtrl = TextEditingController();
   final _gravedadPeligroCtrl = TextEditingController();
   final _imagenPeligroCtrl = TextEditingController();
-  final _stdPeligroCtrl = TextEditingController();
+  String _stdPeligroCtrl = "activado";
   DateTime? _fecha;
+
+  bool _switchValuePeligro = false;
 
   // ====================================================
   // (Step 3) - EVALUACIÓN RIESGOS
@@ -144,6 +152,18 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   final _observacionesEvalRiesgo = TextEditingController();
   final _stdEvalRiesgo = TextEditingController();
   String _riesgosSeleccionadosString = "";
+
+  final List<RiesgoTipoOption> _tipoRiesgos = const [
+    RiesgoTipoOption(1, 'Riesgos Físicos'),
+    RiesgoTipoOption(2, 'Riesgos Químicos'),
+    RiesgoTipoOption(3, 'Riesgos Biológicos'),
+    RiesgoTipoOption(4, 'Riesgos Ergonómicos'),
+    RiesgoTipoOption(5, 'Riesgos Mecánicos'),
+    RiesgoTipoOption(6, 'Riesgos Psicosociales'),
+    RiesgoTipoOption(7, 'Riesgos Ambientales'),
+    RiesgoTipoOption(8, 'Riesgos Eléctricos'),
+  ];
+  int? _selectedTipoRiesgoId;
 
   // Riesgo
   int? _personaExpuestaIden;
@@ -195,16 +215,31 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   final _estadoControlCtrl = TextEditingController();
   final _rutaControlCtrl = TextEditingController();
   final _evidenciaControlCtrl = TextEditingController();
-  final _stdControlCtrl = TextEditingController();
+  String _evidencia = "";
+
+  String _stdControlCtrl = "activado";
+  bool _switchValueControl = false;
+
   // final usuarioCreacion
   // Fecha creacion
   // Usuario modificacion}
   // Fecha modificacion
 
-  // Controles (lista dinámica)
-  final List<ControlEntry> _controles = [
-    ControlEntry(type: ControlType.epp, description: ''),
+  final List<TipoControlOption> _eficaciaControles = const [
+    TipoControlOption(1, 'ALTA'),
+    TipoControlOption(2, 'MEDIA'),
+    TipoControlOption(3, 'BAJA'),
   ];
+  int? _selectedEficaciaControlId;
+
+  final List<TipoControlOption> _estadoControles = const [
+    TipoControlOption(1, 'COMPLETADO'),
+    TipoControlOption(2, 'EN PROCESO'),
+  ];
+  int? _selectedEstadoControlId;
+
+  bool _mostrarProbabilidades = false;
+  bool _otroCheckbox = false;
 
   // ====================================================================
   // ================ LISTAS PARA TAER DE SQLITE ========================
@@ -298,7 +333,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         gravedad: _gravedadPeligroCtrl.text,
         fechaCreacion: _fechaString,
         // fechaCreacion: _fecha,
-        std: _stdPeligroCtrl.text,
+        std: _stdPeligroCtrl,
         ruta: "",
         puestoTrabajoId: _idPuestoTrabajo,
         tareaId: _idTarea,
@@ -400,10 +435,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         responsable: _responsableControlCtrl.text,
         fechaImplementacion: _fecha,
         eficacia: _eficaciaControlCtrl.text,
+        // eficacia: _eficaciaControles[_selectedEficaciaControlId!].label.toString(),
         estado: _estadoControlCtrl.text,
+        //estado: _estadoControles[_selectedEstadoControlId!].label.toString(),
         ruta: _rutaControlCtrl.text,
         evidencia: _evidenciaControlCtrl.text,
-        std: _stdControlCtrl.text,
+        std: _stdControlCtrl,
 
         // Datos de usuario
         usuarioCreacion: 'Admin',
@@ -487,7 +524,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     _nombrePeligroCtrl.dispose();
     _gravedadPeligroCtrl.dispose();
     _imagenPeligroCtrl.dispose();
-    _stdPeligroCtrl.dispose();
 
     // ============================
     // STEP 3: EVALUACIÓN RIESGOS
@@ -505,7 +541,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
     _estadoControlCtrl.dispose();
     _rutaControlCtrl.dispose();
     _evidenciaControlCtrl.dispose();
-    _stdControlCtrl.dispose();
 
     super.dispose();
   }
@@ -603,11 +638,11 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   //   });
   // }
 
-  void _removeControl(int index) {
-    setState(() {
-      _controles.removeAt(index);
-    });
-  }
+  // void _removeControl(int index) {
+  //   setState(() {
+  //     _controles.removeAt(index);
+  //   });
+  // }
 
   void _submit() {
     final data = HazardReport(
@@ -617,11 +652,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       ubicacion: "",
       fecha: _fecha,
       riesgos: _riesgosSeleccionados.toList(),
-      controles: _controles,
+      controles: [],
+      // controles: []
     );
 
-    // TODO: aquí puedes llamar a tu backend.
-    debugPrint('HAZARD REPORT JSON: ${data.toJson()}');
+    //   // TODO: aquí puedes llamar a tu backend.
+    //   debugPrint('HAZARD REPORT JSON: ${data.toJson()}');
 
     _showMsg('Registro guardado correctamente.');
     Navigator.of(
@@ -700,10 +736,17 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       content: Form(
         key: _formDatosKey,
         child: Column(
-          // crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Text('Datos de la Tarea'),
-            const SizedBox(height: 10),
+            Text(
+              'Datos de la Tarea',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(33, 33, 33, 1),
+              ),
+            ),
+            const SizedBox(height: 20),
             // Select Puestos
             CustomSelect<PuestoTrabajo>(
               label: 'Puestos de trabajo',
@@ -728,15 +771,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 setState(() {
                   _refreshPuestosTrabajo();
                 });
-
-                // Si se añadió/actualizó algo, refrescamos la lista
-                // if (result == true) {
-                //   setState(() {
-                //     _refreshPasosTarea();
-                //   });
-                // }
-                // context.go("/ssoma/seguridad_proteccion/add_puesto");
-                // _refreshPuestosTrabajo();
               },
               itemLabel: (puesto) => "${puesto.id}.- ${puesto.nombre}",
             ),
@@ -765,17 +799,9 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 setState(() {
                   _refreshPasosTarea();
                 });
-                // Si se añadió/actualizó algo, refrescamos la lista
-                // if (result == true) {
-                //   setState(() {
-                //     _refreshPasosTarea();
-                //   });
-                // }
-
-                // context.push("/ssoma/seguridad_proteccion/add_tareas");
-                // _refreshPasosTarea();
               },
-              itemLabel: (tarea) => "${tarea.id}.- ${tarea.pasos}",
+              itemLabel: (tarea) =>
+                  "${tarea.id}.- ${tarea.nombre}: ${tarea.pasos}",
             ),
             const SizedBox(height: 20),
           ],
@@ -797,11 +823,20 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       content: Form(
         key: _formPeligrosKey,
         child: Column(
-          // crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 10),
+            Text(
+              'Identificar Peligro',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(33, 33, 33, 1),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Campo de Peligro + Botón de Lista
             LabeledField(
-              label: 'Peligro (obligatorio)',
+              label: '1.- Peligro (obligatorio)',
               child: Row(
                 children: [
                   Expanded(
@@ -845,9 +880,11 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 25),
+
+            // Campo de Gravedad
             LabeledField(
-              label: 'Gravedad',
+              label: '2.- Gravedad',
               child: TextFormField(
                 controller: _gravedadPeligroCtrl,
                 maxLines: 3,
@@ -857,12 +894,16 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 25),
+
+            // Fecha + Switch STD en la misma fila
             Row(
               children: [
+                // Campo de Fecha responsivo
                 Expanded(
+                  flex: 3,
                   child: LabeledField(
-                    label: 'Fecha',
+                    label: '3.- Fecha y Activación',
                     child: InkWell(
                       onTap: _selectDate,
                       child: InputDecorator(
@@ -873,30 +914,57 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         child: Text(
                           _fecha == null
                               ? 'Fecha'
-                              // : _fecha!.toIso8601String(),
                               : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 25),
+
+                // Switch STD alineado a la derecha
                 Expanded(
-                  child: LabeledField(
-                    label: 'Estado/Std',
-                    child: TextFormField(
-                      controller: _stdPeligroCtrl,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                  flex: 2,
+                  child: Row(
+                    verticalDirection: VerticalDirection.down,
+                    children: [
+                      const Text(
+                        "STD:",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: _stdPeligroCtrl == 'activado',
+                        onChanged: (value) {
+                          setState(() {
+                            _switchValuePeligro = value;
+                            _stdPeligroCtrl = value
+                                ? "activado"
+                                : "desactivado";
+                          });
+                        },
+                        activeColor: Colors
+                            .white, // Color del círculo cuando está activado
+                        activeTrackColor: Colors
+                            .green, // Color de la pista cuando está activado
+                        inactiveThumbColor: Colors
+                            .white, // Color del círculo cuando está desactivado
+                        inactiveTrackColor: Colors
+                            .grey, // Color de la pista cuando está desactivado
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 25),
+
+            // PhotoPicker
             PhotoPicker(
-              label: "Foto del incidente",
+              label: "4.- Foto del incidente",
               onImageSelected: (url) {
                 print("URL de la imagen en S3: $url");
                 _imagenPeligroCtrl.text = url ?? "";
@@ -924,10 +992,18 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 15),
+            Text(
+              'Evaluación de Riesgos',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(33, 33, 33, 1),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text(
-              'Peligro y Tipo:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              '1.- Peligro y Tipo de riesgos:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
 
             const SizedBox(height: 15),
@@ -942,23 +1018,22 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 _idPeligro = value!.id;
                 // print("Seleccionado: ${value?.nombre}");
               },
-              itemLabel: (puesto) => "${puesto.id}.- ${puesto.nombre}",
+              itemLabel: (peligro) =>
+                  "${peligro.id}.- ${peligro.nombre}: ${peligro.gravedad}",
             ),
 
             const SizedBox(height: 15),
-            // Tipo de Riesgo
-            TextField(
-              controller: _tipoEvalRiesgo,
-              decoration: const InputDecoration(
-                labelText: "Tipo de riesgo",
-                border: OutlineInputBorder(),
-              ),
-              style: TextStyle(color: Colors.black),
+            CustomSelect<RiesgoTipoOption>(
+              label: "Tipo Riesgo",
+              items: _tipoRiesgos,
+              itemLabel: (tipoRiesgo) =>
+                  "${tipoRiesgo.id}.- ${tipoRiesgo.label}",
             ),
-            const SizedBox(height: 15),
+
+            const SizedBox(height: 35),
             const Text(
-              'Asocia uno o varios riesgos:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              '2.- Asocia uno o varios riesgos:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 15),
             Row(
@@ -1029,12 +1104,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 35),
 
             // Probabilidades
             const Text(
-              'PROBABILIDAD:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              '3.- PROBABILIDAD:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 15),
             Row(
@@ -1123,6 +1198,15 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
+              'Medidas de Control',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.bold,
+                color: Color.fromRGBO(33, 33, 33, 1),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
               '1.- Seleciona el riesgo respectivo:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
@@ -1144,7 +1228,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
             const SizedBox(height: 15),
 
             Text(
-              '2.- Agrega y Seleciona uno o varios controles:',
+              '2.- Agrega y Seleciona un control:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
@@ -1176,6 +1260,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               children: _allControles.map((r) {
                 final id = r.id as int;
                 final nombre = r.nombre;
+                final descripcion = r.descripcion;
                 final selected = _riesgosSelected.contains(id);
                 return FilterChip(
                   label: SizedBox(
@@ -1204,6 +1289,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                       if (val) {
                         _riesgosSelected.add(id);
                         _refreshControles();
+
+                        _evidenciaControlCtrl.text = descripcion;
                         // _refreshPuestos();
                       } else {
                         _riesgosSelected.remove(id);
@@ -1229,7 +1316,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 Expanded(
                   child: TextField(
                     decoration: const InputDecoration(
-                      labelText: "Nombre",
+                      labelText: "Nombres",
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (val) {
@@ -1242,28 +1329,60 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 const SizedBox(width: 10),
 
                 // Segundo TextField
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Eficacia",
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        // _severidadIden = val;
-                      });
-                    },
-                    keyboardType: TextInputType
-                        .number, // Por si quieres que sea solo números
-                  ),
-                ),
+                // Expanded(
+                //   child: TextField(
+                //     decoration: const InputDecoration(
+                //       labelText: "Eficacia",
+                //       border: OutlineInputBorder(),
+                //     ),
+                //     onChanged: (val) {
+                //       setState(() {
+                //         // _severidadIden = val;
+                //       });
+                //     },
+                //     keyboardType: TextInputType
+                //         .number, // Por si quieres que sea solo números
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 15),
             Row(
               children: [
+                // Campo de Fecha responsivo
                 Expanded(
+                  flex: 3,
+                  child: CustomSelect<TipoControlOption>(
+                    label: "Eficacia",
+                    items: _eficaciaControles,
+                    itemLabel: (tipoRiesgo) =>
+                        "${tipoRiesgo.id}.- ${tipoRiesgo.label}",
+                  ),
+                ),
+                const SizedBox(width: 25),
+
+                // Switch STD alineado a la derecha
+                Expanded(
+                  flex: 3,
+                  child: CustomSelect<TipoControlOption>(
+                    label: "Estado",
+                    items: _estadoControles,
+                    itemLabel: (estadoControl) =>
+                        "${estadoControl.id}.- ${estadoControl.label}",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+
+            Row(
+              children: [
+                // Campo de Fecha responsivo
+                Expanded(
+                  flex: 3,
                   child: TextField(
+                    controller: _evidenciaControlCtrl,
+                    maxLines: 3,
                     decoration: const InputDecoration(
                       labelText: "Evidencia",
                       border: OutlineInputBorder(),
@@ -1275,100 +1394,175 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     },
                   ),
                 ),
+                const SizedBox(width: 25),
 
-                const SizedBox(width: 10),
-
+                // Switch STD alineado a la derecha
                 Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Estado/Sts",
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        // _capacitacionIden = val;
-                      });
-                    },
+                  flex: 2,
+                  child: Row(
+                    verticalDirection: VerticalDirection.down,
+                    children: [
+                      const Text(
+                        "STD:",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: _stdControlCtrl == 'activado',
+                        onChanged: (value) {
+                          setState(() {
+                            _switchValueControl = value;
+                            _stdControlCtrl = value
+                                ? "activado"
+                                : "desactivado";
+                          });
+                        },
+                        activeColor: Colors
+                            .white, // Color del círculo cuando está activado
+                        activeTrackColor: Colors
+                            .green, // Color de la pista cuando está activado
+                        inactiveThumbColor: Colors
+                            .white, // Color del círculo cuando está desactivado
+                        inactiveTrackColor: Colors
+                            .grey, // Color de la pista cuando está desactivado
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Probabilidades
-            const Text(
-              '4.- Probabilidades:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
             const SizedBox(height: 15),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                LabeledSelectNum(
-                  label: "Índ. Personas Exp. (A)",
-                  onChanged: (val) {
-                    // debugPrint("A -> $val");
-                    setState(() {
-                      _personaExpuestaEval = val;
-                      _countProbabilidadEval += val!;
-                    });
-                  },
+                // ====== Checkboxes ======
+                Row(
+                  // crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Checkbox(
+                      value: _mostrarProbabilidades,
+                      onChanged: (value) {
+                        setState(() {
+                          _mostrarProbabilidades = value ?? false;
+                        });
+                      },
+                    ),
+                    const Text(
+                      "¿Desea actualizar las probabilidades?",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    // Checkbox(
+                    //   value: _otroCheckbox,
+                    //   onChanged: (value) {
+                    //     setState(() {
+                    //       _otroCheckbox = value ?? false;
+                    //     });
+                    //   },
+                    // ),
+                    // const Text(
+                    //   "Otra opción",
+                    //   style: TextStyle(
+                    //     fontSize: 16,
+                    //     fontWeight: FontWeight.bold,
+                    //   ),
+                    // ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                LabeledSelectNum(
-                  label: "Índ. Procedimientos (B)",
-                  onChanged: (val) {
-                    // debugPrint("B -> $val");
-                    setState(() {
-                      _procedimientoExistenteEval = val;
-                      _countProbabilidadEval += val!;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                LabeledSelectNum(
-                  label: "Índ. Capacitación (C)",
-                  onChanged: (val) {
-                    // debugPrint("C -> $val");
-                    setState(() {
-                      _capacitacionEval = val;
-                      _countProbabilidadEval += val!;
-                    });
-                  },
-                ),
-                const SizedBox(width: 10),
-                LabeledSelectNum(
-                  label: "Índ. Exposición al Riesgo (D)",
-                  onChanged: (val) {
-                    // debugPrint("D -> $val");
-                    setState(() {
-                      _exposicionRiesgoEval = val;
-                      _countProbabilidadEval += val!;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                LabeledSelectNum(
-                  label: "ÍNDICE DE SEVERIDAD",
-                  onChanged: (val) {
-                    setState(() {
-                      _severidadEval = val;
-                      _countFase = val! * _countProbabilidadEval;
-                    });
-                  },
-                ),
-                const Spacer(), // para alinear solo uno en esta fila
-              ],
-            ),
-            const SizedBox(height: 15),
 
-            PhotoPicker(label: "5.- Imagen/Evidencia"),
+                const SizedBox(height: 10),
+
+                // ====== Bloque condicional ======
+                if (_mostrarProbabilidades) ...[
+                  const Text(
+                    'Actualice las Probabilidades:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Primera fila
+                  Row(
+                    children: [
+                      LabeledSelectNum(
+                        label: "Índ. Personas Exp. (A)",
+                        initialValue: _personaExpuestaIden, // valor por defecto
+                        onChanged: (val) {
+                          setState(() {
+                            _personaExpuestaEval = val;
+                            _countProbabilidadEval += val ?? 0;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      LabeledSelectNum(
+                        label: "Índ. Procedimientos (B)",
+                        initialValue: _procedimientoExistenteIden,
+                        onChanged: (val) {
+                          setState(() {
+                            _procedimientoExistenteEval = val;
+                            _countProbabilidadEval += val ?? 0;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Segunda fila
+                  Row(
+                    children: [
+                      LabeledSelectNum(
+                        label: "Índ. Capacitación (C)",
+                        initialValue: _capacitacionIden,
+                        onChanged: (val) {
+                          setState(() {
+                            _capacitacionEval = val;
+                            _countProbabilidadEval += val ?? 0;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      LabeledSelectNum(
+                        label: "Índ. Exposición al Riesgo (D)",
+                        initialValue: _exposicionRiesgoIden,
+                        onChanged: (val) {
+                          setState(() {
+                            _exposicionRiesgoEval = val;
+                            _countProbabilidadEval += val ?? 0;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Índice severidad
+                  Row(
+                    children: [
+                      LabeledSelectNum(
+                        label: "ÍNDICE DE SEVERIDAD",
+                        initialValue: _severidadIden,
+                        onChanged: (val) {
+                          setState(() {
+                            _severidadEval = val;
+                            _countFase = (val ?? 0) * _countProbabilidadEval;
+                          });
+                        },
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 15),
+            PhotoPicker(label: "4.- Imagen/Evidencia"),
           ],
         ),
       ),
@@ -1453,7 +1647,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               //   ],
               // ),
               // _kv('Área/Proceso', _areaCtrl.text),
-              _kv('Estado', _stdPeligroCtrl.text),
+              _kv('Estado', _stdPeligroCtrl),
               _kv(
                 'Fecha',
                 _fecha == null

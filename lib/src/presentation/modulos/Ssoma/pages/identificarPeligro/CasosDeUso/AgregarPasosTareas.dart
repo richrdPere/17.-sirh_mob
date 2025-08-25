@@ -7,6 +7,12 @@ import 'package:sirh_mob/src/data/datasource/local/db_sqlite/database_ssoma.dart
 // Modelo
 import 'package:sirh_mob/src/domain/models/ssoma_models/Tarea.dart';
 
+class TipoTareaOption {
+  final int id;
+  final String label;
+  const TipoTareaOption(this.id, this.label);
+}
+
 class AgregarPasosTareas extends StatefulWidget {
   const AgregarPasosTareas({super.key});
 
@@ -21,23 +27,59 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
   // 2.- Todos los puestos
   List<Tarea> _allTareas = [];
   bool _isLoading = true;
+  bool _switchValue = false; // Estado inicial del switch
+
+  final List<TipoTareaOption> _tipoTareas = const [
+    TipoTareaOption(1, 'R'),
+    TipoTareaOption(2, 'NR'),
+    TipoTareaOption(3, 'E'),
+  ];
 
   // 3.- Campos
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _tipoController = TextEditingController();
+  int? _selectedTipoTareaId;
+
   final TextEditingController _pasosController = TextEditingController();
   final TextEditingController _frecuenciaController = TextEditingController();
-  final TextEditingController _stdController = TextEditingController();
+  final List<TipoTareaOption> _frecuenciasTareas = const [
+    TipoTareaOption(1, 'A veces'),
+    TipoTareaOption(2, 'Con frecuencia'),
+    TipoTareaOption(3, 'Siempre'),
+    TipoTareaOption(4, 'Casi nunca'),
+    TipoTareaOption(5, 'Usualmente'),
+  ];
+  int? _selectedTipoFrecuenciaId;
+
+  String _stdController = "desactivado"; // Valor por defecto
 
   // 4.- Inicializar
   @override
   void initState() {
     super.initState();
+    _nombreController.addListener(() {
+      // Forzar a mayúsculas
+      _nombreController.value = _nombreController.value.copyWith(
+        text: _nombreController.text.toUpperCase(),
+        selection: _nombreController.selection,
+      );
+    });
+
     _refreshPasosTarea();
   }
 
-  // 5.- Funciones
-  // Obtener
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _pasosController.dispose();
+    _frecuenciaController.dispose();
+    super.dispose();
+  }
+
+  // =============================
+  // 5.- FUNCIONES PRINCIPALES
+  // =============================
+  // Obtener lista de pasos
   void _refreshPasosTarea() async {
     final data = await db.getPasosTarea();
 
@@ -47,15 +89,18 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     });
   }
 
-  // Insertar
+  // Insertar nueva tarea
   Future<void> _addPasosTarea() async {
     await db.insertPasosTarea(
       Tarea(
         nombre: _nombreController.text,
-        tipo: _tipoController.text,
+        // tipo: _tipoController.text,
+        tipo: _tipoTareas[_selectedTipoTareaId!].label.toString(),
         pasos: _pasosController.text,
-        frecuencia: _frecuenciaController.text,
-        std: _stdController.text,
+        // frecuencia: _frecuenciaController.text,
+        frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId!].label
+            .toString(),
+        std: _stdController,
         usuarioCreacion: 'admin',
         fechaCreacion: DateTime.now(),
         usuarioModificacion: '',
@@ -65,16 +110,19 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     _refreshPasosTarea();
   }
 
-  // Actualizar
+  // Actualizar tarea existente
   Future<void> _updatePasosTarea(int id) async {
     await db.updatePasosTarea(
       Tarea(
         id: id,
         nombre: _nombreController.text,
-        tipo: _tipoController.text,
+        // tipo: _tipoController.text,
+        tipo: _tipoTareas[_selectedTipoTareaId! - 1].label.toString(),
         pasos: _pasosController.text,
-        frecuencia: _frecuenciaController.text,
-        std: _stdController.text,
+        // frecuencia: _frecuenciaController.text,
+        frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId! - 1].label
+            .toString(),
+        std: _stdController,
         usuarioCreacion: 'system', //  ficticio
         fechaCreacion: DateTime(2025, 01, 01), //  ficticio
         usuarioModificacion: 'admin_update', //  ficticio para update
@@ -84,7 +132,7 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     _refreshPasosTarea();
   }
 
-  // Eliminar
+  // Eliminar tarea
   void _deletePasosTarea(int id) async {
     await db.deletePasosTarea(id);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -95,6 +143,10 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     );
     _refreshPasosTarea();
   }
+
+  // =============================
+  // 6.- FUNCIONES AUXILIARES
+  // =============================
 
   // Formatear Fecha: Si es string
   String formatFechaHoraString(String fecha) {
@@ -123,105 +175,240 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     }
   }
 
-  // 6.- Form Tarea
-  void showBottomSheet(int? id) async {
+  // Convertir a mayuscula
+  String toUpperCaseText(String value) {
+    return value.toUpperCase();
+  }
+
+  // =============================
+  // 7.- MODAL PARA AGREGAR / EDITAR
+  // =============================
+
+  void showBottomSheet(int? id, bool isActive) async {
     if (id != null) {
       final existingData = _allTareas.firstWhere((e) => e.id == id);
+
+      // Cargamos los valores
       _nombreController.text = existingData.nombre;
       _tipoController.text = existingData.tipo;
       _pasosController.text = existingData.pasos;
-      _frecuenciaController.text = existingData.frecuencia;
-      _stdController.text = existingData.std;
+      _stdController = existingData.std;
+
+      // 1 
+      // Buscar el ID correcto segun el label guardado en la DB PARA FRECUENCIAS
+      final frecuenciaEncontrado = _frecuenciasTareas.firstWhere(
+        (e) => e.label == existingData.frecuencia,
+        orElse: () =>
+            _tipoTareas.first, // Evita crash si no encuentra coincidencia
+      );
+      // Guardamos el ID encontrado
+      _selectedTipoFrecuenciaId = frecuenciaEncontrado.id;
+
+      // 2
+      // Buscar el ID correcto segun el label guardado en la DB PARA TIPO
+      final tipoEncontrado = _tipoTareas.firstWhere(
+        (e) => e.label == existingData.tipo,
+        orElse: () =>
+            _tipoTareas.first, // Evita crash si no encuentra coincidencia
+      );
+
+      // Guardamos el ID encontrado
+      _selectedTipoTareaId = tipoEncontrado.id;
+    } else {
+      // Nuevo registro: limpiar selección
+      _selectedTipoTareaId = null;
+      _nombreController.clear();
+      _pasosController.clear();
+      _frecuenciaController.clear();
+      _stdController = "";
     }
 
     showModalBottomSheet(
       elevation: 5,
       isScrollControlled: true,
       context: context,
-      builder: (_) => Container(
-        padding: EdgeInsets.only(
-          top: 30,
-          left: 15,
-          right: 15,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 50,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TextField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Nombre",
-              ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              top: 30,
+              left: 15,
+              right: 15,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 50,
             ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _tipoController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Tipo",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _pasosController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Pasos",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _frecuenciaController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Frecuencias",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _stdController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Estado std",
-              ),
-            ),
-            SizedBox(height: 10),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (id == null) {
-                    await _addPasosTarea();
-                  }
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    // Campo Nombre - Flexible para adaptarse
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _nombreController,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: "Nombre",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
 
-                  if (id != null) {
-                    await _updatePasosTarea(id);
-                  }
-
-                  _nombreController.text = "";
-                  _tipoController.text = "";
-                  _frecuenciaController.text = "";
-                  _pasosController.text = "";
-                  _stdController.text = "";
-
-                  // Ocultar Bottom sheet
-                  Navigator.of(context).pop(true);
-                  print("Agregar Tarea");
-                },
-                child: Padding(
-                  padding: EdgeInsets.all(18),
-                  child: Text(
-                    id == null ? "Agregar Tarea" : "Actualizar Tarea",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedTipoTareaId,
+                        items: _tipoTareas
+                            .map(
+                              (tipo) => DropdownMenuItem<int>(
+                                value: tipo.id,
+                                child: Text(tipo.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setModalState(() {
+                            _selectedTipoTareaId = val;
+                          });
+                          // opcional: sync con el controller si lo usas en otra parte
+                          _tipoController.text = val?.toString() ?? '';
+                        },
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Tipo",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: _pasosController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: "Pasos de la Tarea",
                   ),
                 ),
-              ),
+                SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedTipoFrecuenciaId,
+                        items: _frecuenciasTareas
+                            .map(
+                              (tipo) => DropdownMenuItem<int>(
+                                value: tipo.id,
+                                child: Text(tipo.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setModalState(() {
+                            _selectedTipoFrecuenciaId = val;
+                          });
+                          // opcional: sync con el controller si lo usas en otra parte
+                          _tipoController.text = val?.toString() ?? '';
+                        },
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Frecuencia",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Text("STD: "),
+                          Switch(
+                            //value: isActive,
+                            value: _stdController == 'activado' ? true : false,
+                            onChanged: (value) {
+                              setModalState(() {
+                                isActive = value;
+                                _stdController = value
+                                    ? "activado"
+                                    : "desactivado";
+                              });
+                            },
+                            activeColor: Colors
+                                .white, // Color del círculo cuando está activado
+                            activeTrackColor: Colors
+                                .green, // Color de la pista cuando está activado
+                            inactiveThumbColor: Colors
+                                .white, // Color del círculo cuando está desactivado
+                            inactiveTrackColor: Colors
+                                .grey, // Color de la pista cuando está desactivado
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 10),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (id == null) {
+                        await _addPasosTarea();
+                      }
+
+                      if (id != null) {
+                        await _updatePasosTarea(id);
+                      }
+
+                      _nombreController.text = "";
+                      _tipoController.text = "";
+                      _frecuenciaController.text = "";
+                      _pasosController.text = "";
+                      _stdController = "";
+
+                      // Actualizar Lista de Puestos
+                      _refreshPasosTarea();
+
+                      // Ocultar Bottom sheet
+                      Navigator.of(context).pop(true);
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text(
+                        id == null ? "Agregar Tarea" : "Actualizar Tarea",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -231,8 +418,8 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     return Scaffold(
       backgroundColor: const Color(0xFFECEAF4),
       appBar: AppBar(title: const Text("Agregar Puestos")),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+      body: _allTareas.isEmpty
+          ? const Center(child: Text("No hay Tareas registradas"))
           : ListView.builder(
               itemCount: _allTareas.length,
               itemBuilder: (context, index) {
@@ -301,8 +488,19 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
                         // Pasos
                         Text(
                           tarea.pasos.isNotEmpty
-                              ? "Paso Tarea: ${tarea.pasos}"
+                              ? "Pasos: ${tarea.pasos}"
                               : "Sin descripción",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        Text(
+                          tarea.frecuencia.isNotEmpty
+                              ? "Frecuencia: ${tarea.frecuencia}"
+                              : "Sin info",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[800],
@@ -382,7 +580,8 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
                                 "Editar",
                                 style: TextStyle(color: Colors.white),
                               ),
-                              onPressed: () => showBottomSheet(tarea.id),
+                              onPressed: () =>
+                                  showBottomSheet(tarea.id, _switchValue),
                             ),
                             const SizedBox(width: 10),
                             ElevatedButton.icon(
@@ -406,29 +605,6 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
                             ),
                           ],
                         ),
-                        // ListTile(
-                        //   title: Padding(
-                        //     padding: EdgeInsets.symmetric(vertical: 5),
-                        //     child: Text(
-                        //       puesto.pasos,
-                        //       style: TextStyle(fontSize: 20),
-                        //     ),
-                        //   ),
-                        //   subtitle: Text("Tarea: ${puesto.nombre}"),
-                        //   trailing: Row(
-                        //     mainAxisSize: MainAxisSize.min,
-                        //     children: [
-                        //       IconButton(
-                        //         icon: Icon(Icons.edit, color: Colors.blue),
-                        //         onPressed: () => showBottomSheet(puesto.id),
-                        //       ),
-                        //       IconButton(
-                        //         icon: Icon(Icons.delete, color: Colors.red),
-                        //         onPressed: () => _deletePasosTarea(puesto.id!),
-                        //       ),
-                        //     ],
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
@@ -436,7 +612,7 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showBottomSheet(null),
+        onPressed: () => showBottomSheet(null, _switchValue),
         child: Icon(Icons.add),
       ),
     );

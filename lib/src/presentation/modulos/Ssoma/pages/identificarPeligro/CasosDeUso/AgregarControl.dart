@@ -36,6 +36,12 @@ extension ControlTypeText on ControlType {
   }
 }
 
+class TipoControlOption {
+  final int id;
+  final String label;
+  const TipoControlOption(this.id, this.label);
+}
+
 class AgregarControl extends StatefulWidget {
   const AgregarControl({super.key});
 
@@ -50,17 +56,25 @@ class _AgregarControlState extends State<AgregarControl> {
   // 2.- Todos los puestos
   List<Control> _allControls = [];
   bool _isLoading = true;
+  bool _switchControlValue = false; // Estado inicial del switch
 
   // 3.- Campos
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
   final TextEditingController _tipoController = TextEditingController();
-  final TextEditingController _categoriaController = TextEditingController();
-  final TextEditingController _stdController = TextEditingController();
 
-  // final List<ControlEntry> _controles = [
-  //   ControlEntry(type: ControlType.epp, description: ''),
-  // ];
+  final TextEditingController _categoriaController = TextEditingController();
+
+  String _stdController = "desactivado"; // Valor por defecto
+
+  final List<TipoControlOption> _tipoControles = const [
+    TipoControlOption(1, 'Eliminación'),
+    TipoControlOption(2, 'Sustitución'),
+    TipoControlOption(3, 'Ingeniería'),
+    TipoControlOption(4, 'Administrativo'),
+    TipoControlOption(5, 'EPP'),
+  ];
+  int? _selectedTipoControlId;  
 
   // 4.- Inicializar
   @override
@@ -85,10 +99,12 @@ class _AgregarControlState extends State<AgregarControl> {
     await db.insertControl(
       Control(
         nombre: _nombreController.text,
-        tipo: _tipoController.text,
+        // tipo: _tipoController.text,
+        tipo: _tipoControles[_selectedTipoControlId!].label.toString(),
         descripcion: _descripcionController.text,
-        categoria: _categoriaController.text,
-        std: _stdController.text,
+        // categoria: _categoriaController.text,
+        categoria: _tipoControles[_selectedTipoControlId!].label.toString(),
+        std: _stdController,
         usuarioCreacion: 'admin',
         fechaCreacion: DateTime.now(),
         usuarioModificacion: '',
@@ -104,10 +120,12 @@ class _AgregarControlState extends State<AgregarControl> {
       Control(
         id: id,
         nombre: _nombreController.text,
-        tipo: _tipoController.text,
+        //tipo: _tipoController.text,
+        tipo: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
         descripcion: _descripcionController.text,
-        categoria: _categoriaController.text,
-        std: _stdController.text,
+        // categoria: _categoriaController.text,
+        categoria: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
+        std: _stdController,
         usuarioCreacion: 'system', //  ficticio
         fechaCreacion: DateTime(2025, 01, 01), //  ficticio
         usuarioModificacion: 'admin_update', //  ficticio para update
@@ -130,104 +148,215 @@ class _AgregarControlState extends State<AgregarControl> {
   }
 
   // 6.- Form Tarea
-  void showBottomSheet(int? id) async {
+  void showBottomSheet(int? id, bool isActive) async {
     if (id != null) {
       final existingData = _allControls.firstWhere((e) => e.id == id);
+
+      // Cargamos los valores
       _nombreController.text = existingData.nombre;
       _tipoController.text = existingData.tipo;
       _categoriaController.text = existingData.categoria;
       _descripcionController.text = existingData.descripcion;
-      _stdController.text = existingData.std;
+      _stdController = existingData.std;
+
+      // Buscar el ID correcto segun el label guardado en la DB PARA CONTROLES
+      final controlEncontrado = _tipoControles.firstWhere(
+        (e) => e.label == existingData.tipo,
+        orElse: () =>
+            _tipoControles.first, // Evita crash si no encuentra coincidencia
+      );
+      // Guardamos el ID encontrado
+      _selectedTipoControlId = controlEncontrado.id;
+    } else {
+      // Nuevo registro: limpiar selección
+      _selectedTipoControlId = null;
+      _nombreController.clear();
+      _descripcionController.clear();
+      _stdController = "";
     }
 
     showModalBottomSheet(
       elevation: 5,
       isScrollControlled: true,
       context: context,
-      builder: (_) => Container(
-        padding: EdgeInsets.only(
-          top: 30,
-          left: 15,
-          right: 15,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 50,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TextField(
-              controller: _nombreController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Nombre",
-              ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              top: 30,
+              left: 15,
+              right: 15,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 50,
             ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _tipoController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Tipo",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _descripcionController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Descripción",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _categoriaController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Categoria",
-              ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: _stdController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: "Estado std",
-              ),
-            ),
-            SizedBox(height: 10),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (id == null) {
-                    await _addControles();
-                  }
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  children: [
+                    // Campo Nombre - Flexible para adaptarse
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _nombreController,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          hintText: "Nombre",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
 
-                  if (id != null) {
-                    await _updateControl(id);
-                  }
-
-                  _nombreController.text = "";
-                  _tipoController.text = "";
-                  _categoriaController.text = "";
-                  _descripcionController.text = "";
-                  _stdController.text = "";
-
-                  // Ocultar Bottom sheet
-                  Navigator.of(context).pop();
-                  print("Agregar Control");
-                },
-                child: Padding(
-                  padding: EdgeInsets.all(18),
-                  child: Text(
-                    id == null ? "Agregar Control" : "Actualizar Control",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedTipoControlId,
+                        items: _tipoControles
+                            .map(
+                              (tipo) => DropdownMenuItem<int>(
+                                value: tipo.id,
+                                child: Text(tipo.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedTipoControlId = val;
+                          });
+                          // opcional: sync con el controller si lo usas en otra parte
+                          _tipoController.text = val?.toString() ?? '';
+                        },
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: "Tipo/Categoria",
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: _descripcionController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: "Descripción",
                   ),
                 ),
-              ),
+                SizedBox(height: 10),
+                Row(
+                  children: [
+                    // Campo Meta - Select responsivo
+                    // Expanded(
+                    //   flex: 2,
+                    //   child: DropdownButtonFormField<int>(
+                    //     value: _selectedTipoControlId,
+                    //     items: _frecuenciasTareas
+                    //         .map(
+                    //           (tipo) => DropdownMenuItem<int>(
+                    //             value: tipo.id,
+                    //             child: Text(tipo.label),
+                    //           ),
+                    //         )
+                    //         .toList(),
+                    //     onChanged: (val) {
+                    //       setModalState(() {
+                    //         _selectedTipoFrecuenciaId = val;
+                    //       });
+                    //       // opcional: sync con el controller si lo usas en otra parte
+                    //       _tipoController.text = val?.toString() ?? '';
+                    //     },
+                    //     decoration: InputDecoration(
+                    //       border: OutlineInputBorder(),
+                    //       hintText: "Frecuencia",
+                    //       contentPadding: const EdgeInsets.symmetric(
+                    //         horizontal: 12,
+                    //         vertical: 14,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                    const SizedBox(width: 10),
+
+                    // Campo Meta - Select responsivo
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Text("STD: "),
+                          Switch(
+                            //value: isActive,
+                            value: _stdController == 'activado' ? true : false,
+                            onChanged: (value) {
+                              setModalState(() {
+                                isActive = value;
+                                _stdController = value
+                                    ? "activado"
+                                    : "desactivado";
+                              });
+                            },
+                            activeColor: Colors
+                                .white, // Color del círculo cuando está activado
+                            activeTrackColor: Colors
+                                .green, // Color de la pista cuando está activado
+                            inactiveThumbColor: Colors
+                                .white, // Color del círculo cuando está desactivado
+                            inactiveTrackColor: Colors
+                                .grey, // Color de la pista cuando está desactivado
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (id == null) {
+                        await _addControles();
+                      }
+
+                      if (id != null) {
+                        await _updateControl(id);
+                      }
+
+                      _nombreController.text = "";
+                      _tipoController.text = "";
+                      _categoriaController.text = "";
+                      _descripcionController.text = "";
+                      _stdController = "";
+
+                      // Ocultar Bottom sheet
+                      Navigator.of(context).pop();
+                      print("Agregar Control");
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text(
+                        id == null ? "Agregar Control" : "Actualizar Control",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -237,8 +366,8 @@ class _AgregarControlState extends State<AgregarControl> {
     return Scaffold(
       backgroundColor: const Color(0xFFECEAF4),
       appBar: AppBar(title: const Text("Agregar Controles")),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+      body: _allControls.isEmpty
+          ? const Center(child: Text("No hay Medidas de Control registrados"))
           : ListView.builder(
               itemCount: _allControls.length,
               itemBuilder: (context, index) {
@@ -248,15 +377,21 @@ class _AgregarControlState extends State<AgregarControl> {
                   child: ListTile(
                     title: Padding(
                       padding: EdgeInsets.symmetric(vertical: 5),
-                      child: Text(control.nombre, style: TextStyle(fontSize: 20)),
+                      child: Text(
+                        control.nombre,
+                        style: TextStyle(fontSize: 20),
+                      ),
                     ),
-                    subtitle: Text("Descripcion: ${control.descripcion}"),
+                    subtitle: Text(
+                      "Descripcion: ${control.descripcion}\nSTD: ${control.std}\nTipo/Categoria: ${control.tipo}",
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => showBottomSheet(control.id),
+                          onPressed: () =>
+                              showBottomSheet(control.id, _switchControlValue),
                         ),
                         IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
@@ -269,7 +404,7 @@ class _AgregarControlState extends State<AgregarControl> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showBottomSheet(null),
+        onPressed: () => showBottomSheet(null, _switchControlValue),
         child: Icon(Icons.add),
       ),
     );

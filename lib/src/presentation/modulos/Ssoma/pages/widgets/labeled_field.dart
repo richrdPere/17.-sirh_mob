@@ -15,7 +15,7 @@ class _LabeledFieldState extends State<LabeledField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 6),
         widget.child,
       ],
