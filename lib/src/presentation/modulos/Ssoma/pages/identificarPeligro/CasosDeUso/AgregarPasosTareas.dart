@@ -95,11 +95,16 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
       Tarea(
         nombre: _nombreController.text,
         // tipo: _tipoController.text,
-        tipo: _tipoTareas[_selectedTipoTareaId!].label.toString(),
+        // tipo: _tipoTareas[_selectedTipoTareaId!].label.toString(),
+        tipo: _tipoTareas
+            .firstWhere((f) => f.id == _selectedTipoTareaId)
+            .label,
         pasos: _pasosController.text,
         // frecuencia: _frecuenciaController.text,
-        frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId!].label
-            .toString(),
+        // frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId!].label.toString(),
+        frecuencia: _frecuenciasTareas
+            .firstWhere((f) => f.id == _selectedTipoFrecuenciaId)
+            .label,
         std: _stdController,
         usuarioCreacion: 'admin',
         fechaCreacion: DateTime.now(),
@@ -117,11 +122,17 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
         id: id,
         nombre: _nombreController.text,
         // tipo: _tipoController.text,
-        tipo: _tipoTareas[_selectedTipoTareaId! - 1].label.toString(),
+        // tipo: _tipoTareas[_selectedTipoTareaId! - 1].label.toString(),
+        tipo: _tipoTareas
+            .firstWhere((f) => f.id == _selectedTipoTareaId)
+            .label,
         pasos: _pasosController.text,
         // frecuencia: _frecuenciaController.text,
-        frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId! - 1].label
-            .toString(),
+        // frecuencia: _frecuenciasTareas[_selectedTipoFrecuenciaId! - 1].label
+        //     .toString(),
+        frecuencia: _frecuenciasTareas
+            .firstWhere((f) => f.id == _selectedTipoFrecuenciaId)
+            .label,
         std: _stdController,
         usuarioCreacion: 'system', //  ficticio
         fechaCreacion: DateTime(2025, 01, 01), //  ficticio
@@ -194,7 +205,7 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
       _pasosController.text = existingData.pasos;
       _stdController = existingData.std;
 
-      // 1 
+      // 1
       // Buscar el ID correcto segun el label guardado en la DB PARA FRECUENCIAS
       final frecuenciaEncontrado = _frecuenciasTareas.firstWhere(
         (e) => e.label == existingData.frecuencia,
@@ -217,6 +228,7 @@ class _AgregarPasosTareasState extends State<AgregarPasosTareas> {
     } else {
       // Nuevo registro: limpiar selección
       _selectedTipoTareaId = null;
+      _selectedTipoFrecuenciaId = null;
       _nombreController.clear();
       _pasosController.clear();
       _frecuenciaController.clear();

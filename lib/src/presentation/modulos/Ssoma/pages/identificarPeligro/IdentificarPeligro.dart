@@ -171,25 +171,48 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   int? _capacitacionIden;
   int? _exposicionRiesgoIden;
 
-  int?
-  _probabilidadIden; // _personaExpuestaIden + _procedimientoExistenteIden + _capacitacionIden + _exposicionRiesgoIden
   int? _severidadIden;
-  num _countProbabilidadIden = 0;
+  num _countProbabilidadIden =
+      0; // _personaExpuestaIden + _procedimientoExistenteIden + _capacitacionIden + _exposicionRiesgoIden
 
-  int? _fase; // _probabilidadIden * _severidadIden
-  num _countFase = 0;
+  num _countFase = 0; // _probabilidadIden * _severidadIden
 
-  // Control
+  void _recalcularProbabilidad() {
+    setState(() {
+      _countProbabilidadIden =
+          (_personaExpuestaIden ?? 0) +
+          (_procedimientoExistenteIden ?? 0) +
+          (_capacitacionIden ?? 0) +
+          (_exposicionRiesgoIden ?? 0);
+
+      _countFase = _countProbabilidadIden * (_severidadIden ?? 1);
+    });
+  }
+
+  // Control - Evaluación
   int? _personaExpuestaEval;
   int? _procedimientoExistenteEval;
   int? _capacitacionEval;
   int? _exposicionRiesgoEval;
 
-  int?
-  _probabilidadEval; // _personaExpuestaEval + _procedimientoExistenteEval + _capacitacionEval + _exposicionRiesgoEval
-  num _countProbabilidadEval = 0;
-
   int? _severidadEval;
+  num _countProbabilidadEval =
+      0; // _personaExpuestaEval + _procedimientoExistenteEval + _capacitacionEval + _exposicionRiesgoEval
+
+  num _countFaseEval = 0; // _probabilidadIden * _severidadIden
+
+  void _recalcularProbabilidadEval() {
+    setState(() {
+      _countProbabilidadEval =
+          (_personaExpuestaEval ?? _personaExpuestaIden ?? 0) +
+          (_procedimientoExistenteEval ?? _procedimientoExistenteIden ?? 0) +
+          (_capacitacionEval ?? _capacitacionIden ?? 0) +
+          (_exposicionRiesgoEval ?? _exposicionRiesgoIden ?? 0);
+
+      _countFaseEval =
+          _countProbabilidadEval * (_severidadEval ?? _severidadIden ?? 1);
+    });
+  }
 
   // Riesgos (chips multiselección + agregar propio)
   final List<String> _riesgoCatalogo = [
@@ -215,7 +238,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   final _estadoControlCtrl = TextEditingController();
   final _rutaControlCtrl = TextEditingController();
   final _evidenciaControlCtrl = TextEditingController();
-  String _evidencia = "";
+  String _nombreControl = "";
+  int? _idControl;
 
   String _stdControlCtrl = "activado";
   bool _switchValueControl = false;
@@ -242,13 +266,15 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
   bool _otroCheckbox = false;
 
   // ====================================================================
-  // ================ LISTAS PARA TAER DE SQLITE ========================
+  // ================ LISTAS PARA TRAER DE SQLITE ========================
   // ====================================================================
   // Puestos, tareas , peligros
   PuestoTrabajo? _selectedPuesto;
   Tarea? _selectedTarea;
   Peligro? _selectedPeligro;
   EvaluacionRiesgo? _selectedEvaluacionRiesgo;
+  TipoControlOption? _selectedEficaciaControl;
+  TipoControlOption? _selectedEstadoControl;
 
   // Listas (luego puedes traerlas desde SQLite)
   List<PuestoTrabajo> _allPuestos = [];
@@ -380,12 +406,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         fase: _countFase.toInt(),
 
         // Control
-        personaExpuestaEval: _personaExpuestaEval,
-        procedimientoExistenteEval: _procedimientoExistenteEval,
-        capacitacionEval: _capacitacionEval,
-        exposicionRiesgoEval: _exposicionRiesgoEval,
-        probabilidadEval: _countProbabilidadEval.toInt(),
-        severidadEval: _severidadEval,
+        personaExpuestaEval: 0,
+        procedimientoExistenteEval: 0,
+        capacitacionEval: 0,
+        exposicionRiesgoEval: 0,
+        probabilidadEval: 0,
+        severidadEval: 0,
       );
 
       await db.insertEvaluacionRiesgo(nuevaEvaluacion);
@@ -400,23 +426,38 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
   Future<void> _actualizarEvaluacionRiesgo(int evaluacionId) async {
     try {
-      // Creamos un mapa con los datos de control que se van a actualizar
       final Map<String, dynamic> datosControl = {
-        'personaExpuestaEval': _personaExpuestaEval,
-        'procedimientoExistenteEval': _procedimientoExistenteEval,
-        'capacitacionEval': _capacitacionEval,
-        'exposicionRiesgoEval': _exposicionRiesgoEval,
-        'probabilidadEval': _probabilidadEval,
-        'severidadEval': _severidadEval,
+        // Riesgo
+        'eri_persona_expuesta_iden':
+            _personaExpuestaEval ?? _personaExpuestaIden,
+        'eri_procedimiento_existente_iden':
+            _procedimientoExistenteEval ?? _procedimientoExistenteIden,
+        'eri_capacitacion_iden': _capacitacionEval ?? _capacitacionIden,
+        'eri_exposicion_riesgo_iden':
+            _exposicionRiesgoEval ?? _exposicionRiesgoIden,
+        'eri_probabilidad_iden': _countProbabilidadEval.toInt(),
+        'eri_severidad_iden': _severidadEval ?? _severidadIden,
+        'eri_fase': _countFaseEval,
+
+        // Control
+        'eri_persona_expuesta_eval':
+            _personaExpuestaEval ?? _personaExpuestaIden,
+        'eri_procedimiento_existente_eval':
+            _procedimientoExistenteEval ?? _procedimientoExistenteIden,
+        'eri_capacitacion_eval': _capacitacionEval ?? _capacitacionIden,
+        'eri_exposicion_riesgo_eval':
+            _exposicionRiesgoEval ?? _exposicionRiesgoIden,
+        'eri_probabilidad_eval': _countProbabilidadEval.toInt(),
+        // 'eri_probabilidad_eval': _severidadEval,
       };
 
       // Llamamos al método del servicio/database
       await db.updateEvaluacionRiesgoById(evaluacionId, datosControl);
 
-      // Mostramos confirmación visual
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Controles actualizados correctamente")),
-      );
+      // // Mostramos confirmación visual
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text("Controles actualizados correctamente")),
+      // );
     } catch (e) {
       // Manejo de errores
       ScaffoldMessenger.of(context).showSnackBar(
@@ -427,7 +468,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
   /// 3.- FUNCIONES INSERT y UPDATE - MEDIDAS DE CONTROL
   Future<void> _insertarMedidaControl() async {
-    if (_formEvaluacionkey.currentState!.validate()) {
+    if (_formMedidasControlesKey.currentState!.validate()) {
       final nuevaMedidaControl = MedidaControl(
         // Datos
         riesgoId: _idEvaluacionRiesgo,
@@ -436,8 +477,14 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         fechaImplementacion: _fecha,
         eficacia: _eficaciaControlCtrl.text,
         // eficacia: _eficaciaControles[_selectedEficaciaControlId!].label.toString(),
+        // eficacia: _eficaciaControles
+        //     .firstWhere((f) => f.id == _selectedEficaciaControlId)
+        //     .label,
         estado: _estadoControlCtrl.text,
-        //estado: _estadoControles[_selectedEstadoControlId!].label.toString(),
+        // estado: _estadoControles[_selectedEstadoControlId!].label.toString(),
+        // estado: _estadoControles
+        //     .firstWhere((f) => f.id == _selectedEstadoControlId)
+        //     .label,
         ruta: _rutaControlCtrl.text,
         evidencia: _evidenciaControlCtrl.text,
         std: _stdControlCtrl,
@@ -464,7 +511,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
         'procedimientoExistenteEval': _procedimientoExistenteEval,
         'capacitacionEval': _capacitacionEval,
         'exposicionRiesgoEval': _exposicionRiesgoEval,
-        'probabilidadEval': _probabilidadEval,
+        'probabilidadEval': _countProbabilidadEval.toInt(),
         'severidadEval': _severidadEval,
       };
 
@@ -599,6 +646,9 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
 
       if (_formEvaluacionkey.currentState!.validate()) {
         await _insertarEvaluacionRiesgo();
+        setState(() {
+          _refreshEvaluacionRiesgos();
+        });
       }
     }
     if (_currentStep == 3) {
@@ -606,6 +656,10 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       // y que todas las descripciones no estén vacías
       if (_formMedidasControlesKey.currentState!.validate()) {
         await _insertarMedidaControl();
+        await _actualizarEvaluacionRiesgo(_idEvaluacionRiesgo!);
+        setState(() {
+          _refreshControles();
+        });
       }
 
       // if (_controles.isEmpty) {
@@ -1112,6 +1166,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 15),
+
+            // PRIMERA FILA: A y B
             Row(
               children: [
                 LabeledSelectNum(
@@ -1120,7 +1176,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     // debugPrint("A -> $val");
                     setState(() {
                       _personaExpuestaIden = val;
-                      _countProbabilidadIden += val!;
+                      _recalcularProbabilidad();
+                      // _countProbabilidadIden += val ?? 0;
                     });
                   },
                 ),
@@ -1131,13 +1188,16 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     // debugPrint("B -> $val");
                     setState(() {
                       _procedimientoExistenteIden = val;
-                      _countProbabilidadIden += val!;
+                      _recalcularProbabilidad();
+                      // _countProbabilidadIden += val ?? 0;
                     });
                   },
                 ),
               ],
             ),
             const SizedBox(height: 15),
+
+            // SEGUNDA FILA: C y D
             Row(
               children: [
                 LabeledSelectNum(
@@ -1146,7 +1206,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     // debugPrint("C -> $val");
                     setState(() {
                       _capacitacionIden = val;
-                      _countProbabilidadIden += val!;
+                      _recalcularProbabilidad();
+                      // _countProbabilidadIden += val ?? 0;
                     });
                   },
                 ),
@@ -1157,22 +1218,28 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     // debugPrint("D -> $val");
                     setState(() {
                       _exposicionRiesgoIden = val;
-                      _countProbabilidadIden += val!;
+                      _recalcularProbabilidad();
+                      // _countProbabilidadIden += val ?? 0;
                     });
                   },
                 ),
               ],
             ),
             const SizedBox(height: 15),
+
+            // ÍNDICE DE SEVERIDAD
             Row(
               children: [
                 LabeledSelectNum(
                   label: "ÍNDICE DE SEVERIDAD",
                   onChanged: (val) {
-                    setState(() {
-                      _severidadIden = val;
-                      _countFase = val! * _countProbabilidadIden;
-                    });
+                    _severidadIden = val;
+                    _recalcularProbabilidad();
+                    // setState(() {
+                    //   _severidadIden = val;
+
+                    //   _countFase = (val ?? 1) * _countProbabilidadIden;
+                    // });
                   },
                 ),
                 const Spacer(), // para alinear solo uno en esta fila
@@ -1290,11 +1357,17 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         _riesgosSelected.add(id);
                         _refreshControles();
 
+                        _idControl = id;
+                        _nombreControl = nombre;
                         _evidenciaControlCtrl.text = descripcion;
                         // _refreshPuestos();
                       } else {
                         _riesgosSelected.remove(id);
                         _refreshControles();
+
+                        _idControl = null;
+                        _nombreControl = "";
+                        _evidenciaControlCtrl.text = "";
                         // _refreshPuestos();
                       }
                     });
@@ -1315,6 +1388,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                 // Primer TextField
                 Expanded(
                   child: TextField(
+                    controller: _responsableControlCtrl,
                     decoration: const InputDecoration(
                       labelText: "Nombres",
                       border: OutlineInputBorder(),
@@ -1357,6 +1431,19 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     items: _eficaciaControles,
                     itemLabel: (tipoRiesgo) =>
                         "${tipoRiesgo.id}.- ${tipoRiesgo.label}",
+
+                    initialValue: _selectedEficaciaControl,
+                    onChanged: (value) {
+                      setState(() => _selectedEficaciaControl = value);
+                      // _idEvaluacionRiesgo = value!.id;
+                      _eficaciaControlCtrl.text = value!.label;
+                    },
+
+                    // onChanged: (val) {
+                    //   setState(() {
+                    //     _eficaciaControlCtrl.text = val;
+                    //   });
+                    // },
                   ),
                 ),
                 const SizedBox(width: 25),
@@ -1369,6 +1456,12 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     items: _estadoControles,
                     itemLabel: (estadoControl) =>
                         "${estadoControl.id}.- ${estadoControl.label}",
+                    initialValue: _selectedEstadoControl,
+                    onChanged: (value) {
+                      setState(() => _selectedEstadoControl = value);
+                      // _idEvaluacionRiesgo = value!.id;
+                      _estadoControlCtrl.text = value!.label;
+                    },
                   ),
                 ),
               ],
@@ -1387,11 +1480,16 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                       labelText: "Evidencia",
                       border: OutlineInputBorder(),
                     ),
-                    onChanged: (val) {
-                      setState(() {
-                        // _capacitacionIden = val;
-                      });
-                    },
+                    // onChanged: (val) {
+                    //   setState(() {
+                    //     // _capacitacionIden = val;
+                    //   });
+                    // },
+                    // onChanged: (value) {
+                    //   setState(() => _selectedPeligro = value);
+                    //   _idPeligro = value!.id;
+                    //   // print("Seleccionado: ${value?.nombre}");
+                    // },
                   ),
                 ),
                 const SizedBox(width: 25),
@@ -1447,6 +1545,19 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                       onChanged: (value) {
                         setState(() {
                           _mostrarProbabilidades = value ?? false;
+
+                          // Si se oculta el bloque, sincronizamos automáticamente los valores
+                          if (!_mostrarProbabilidades) {
+                            _personaExpuestaEval = _personaExpuestaIden;
+                            _procedimientoExistenteEval =
+                                _procedimientoExistenteIden;
+                            _capacitacionEval = _capacitacionIden;
+                            _exposicionRiesgoEval = _exposicionRiesgoIden;
+                            _severidadEval = _severidadIden;
+
+                            // Si tienes cálculo de probabilidad y fase, los actualizamos también
+                            _recalcularProbabilidadEval();
+                          }
                         });
                       },
                     ),
@@ -1458,21 +1569,6 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                       ),
                     ),
                     const SizedBox(width: 20),
-                    // Checkbox(
-                    //   value: _otroCheckbox,
-                    //   onChanged: (value) {
-                    //     setState(() {
-                    //       _otroCheckbox = value ?? false;
-                    //     });
-                    //   },
-                    // ),
-                    // const Text(
-                    //   "Otra opción",
-                    //   style: TextStyle(
-                    //     fontSize: 16,
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
                   ],
                 ),
 
@@ -1493,10 +1589,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         label: "Índ. Personas Exp. (A)",
                         initialValue: _personaExpuestaIden, // valor por defecto
                         onChanged: (val) {
-                          setState(() {
-                            _personaExpuestaEval = val;
-                            _countProbabilidadEval += val ?? 0;
-                          });
+                          _personaExpuestaEval = val;
+                          _recalcularProbabilidadEval();
                         },
                       ),
                       const SizedBox(width: 10),
@@ -1504,10 +1598,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         label: "Índ. Procedimientos (B)",
                         initialValue: _procedimientoExistenteIden,
                         onChanged: (val) {
-                          setState(() {
-                            _procedimientoExistenteEval = val;
-                            _countProbabilidadEval += val ?? 0;
-                          });
+                          _procedimientoExistenteEval = val;
+                          _recalcularProbabilidadEval();
                         },
                       ),
                     ],
@@ -1521,10 +1613,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         label: "Índ. Capacitación (C)",
                         initialValue: _capacitacionIden,
                         onChanged: (val) {
-                          setState(() {
-                            _capacitacionEval = val;
-                            _countProbabilidadEval += val ?? 0;
-                          });
+                          _capacitacionEval = val;
+                          _recalcularProbabilidadEval();
                         },
                       ),
                       const SizedBox(width: 10),
@@ -1532,10 +1622,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         label: "Índ. Exposición al Riesgo (D)",
                         initialValue: _exposicionRiesgoIden,
                         onChanged: (val) {
-                          setState(() {
-                            _exposicionRiesgoEval = val;
-                            _countProbabilidadEval += val ?? 0;
-                          });
+                          _exposicionRiesgoEval = val;
+                          _recalcularProbabilidadEval();
                         },
                       ),
                     ],
@@ -1549,10 +1637,8 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                         label: "ÍNDICE DE SEVERIDAD",
                         initialValue: _severidadIden,
                         onChanged: (val) {
-                          setState(() {
-                            _severidadEval = val;
-                            _countFase = (val ?? 0) * _countProbabilidadEval;
-                          });
+                          _severidadEval = val;
+                          _recalcularProbabilidadEval();
                         },
                       ),
                       const Spacer(),
@@ -1579,40 +1665,16 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: GridView.count(
-          //     crossAxisCount: 2,
-          //     crossAxisSpacing: 16,
-          //     mainAxisSpacing: 16,
-          //     children: const [
-          //       CustomIconButton(
-          //         icon: Icons.warning,
-          //         label: 'Registros de Peligros',
-          //         route: '/peligros',
-          //         color: Colors.redAccent,
-          //       ),
-          //       CustomIconButton(
-          //         icon: Icons.shield,
-          //         label: 'Medidas de Control',
-          //         route: '/medidas',
-          //         color: Colors.green,
-          //       ),
-          //       CustomIconButton(
-          //         icon: Icons.assignment_turned_in,
-          //         label: 'Control',
-          //         route: '/control',
-          //         color: Colors.orange,
-          //       ),
-          //       CustomIconButton(
-          //         icon: Icons.analytics,
-          //         label: 'Evaluación de Riesgo',
-          //         route: '/evaluacion',
-          //         color: Colors.blue,
-          //       ),
-          //     ],
-          //   ),
-          // ),
+          Text(
+            'RESUMEN GENERAL - IPERC',
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+              color: Color.fromRGBO(33, 33, 33, 1),
+            ),
+          ),
+          const SizedBox(height: 20),
+
           SummaryCard(
             title: '1.- Datos del puesto de trabajo',
             children: [
@@ -1634,11 +1696,20 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               _kv('Pasos', _pasosTareaResumen),
             ],
           ),
+          const SizedBox(height: 15),
           SummaryCard(
             title: '2.- Datos del peligro',
             children: [
+              // const Text(
+              //   "- Datos del Peligro:",
+              //   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              // ),
+              const SizedBox(height: 8),
+
+              _kv('ID puesto trabajo', _idPuestoTrabajo.toString()),
+              _kv('ID tarea', _idTarea.toString()),
               _kv('Peligro', _nombrePeligroCtrl.text),
-              _kv('Descripción', _gravedadPeligroCtrl.text),
+              _kv('Gravedad', _gravedadPeligroCtrl.text),
               // Row(
               //   children: [
               //     Expanded(child: _kv('Área/Proceso', _areaCtrl.text)),
@@ -1654,12 +1725,24 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     ? 'Sin fecha'
                     : '${_fecha!.day.toString().padLeft(2, '0')}/${_fecha!.month.toString().padLeft(2, '0')}/${_fecha!.year}',
               ),
+              const SizedBox(height: 15),
+              const Text(
+                "- Imagen:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
           SummaryCard(
             title: '3.- Evaluación de Riesgos asociados',
             children: [
+              const Text(
+                "- Riesgos detectados:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1667,20 +1750,29 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                     .map((r) => Chip(label: Text(r)))
                     .toList(),
               ),
-
+              const SizedBox(height: 15),
+              const Text(
+                "- Probabilidad:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: _kv(
                       'Ind. Persona Expuesta',
-                      _personaExpuestaIden.toString(),
+                      _personaExpuestaEval != null
+                          ? _personaExpuestaEval.toString()
+                          : _personaExpuestaIden.toString(),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _kv(
                       'Ind. Procedimiento Esistente',
-                      _procedimientoExistenteIden.toString(),
+                      _procedimientoExistenteEval != null
+                          ? _procedimientoExistenteEval.toString()
+                          : _procedimientoExistenteIden.toString(),
                     ),
                   ),
                 ],
@@ -1691,14 +1783,18 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                   Expanded(
                     child: _kv(
                       'Ind. Capacitacion',
-                      _capacitacionIden.toString(),
+                      _capacitacionEval != null
+                          ? _capacitacionEval.toString()
+                          : _capacitacionIden.toString(),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _kv(
                       'Ind. Exp. Riesgo',
-                      _exposicionRiesgoIden.toString(),
+                      _exposicionRiesgoEval != null
+                          ? _exposicionRiesgoEval.toString()
+                          : _exposicionRiesgoIden.toString(),
                     ),
                   ),
                 ],
@@ -1709,19 +1805,35 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
                   Expanded(
                     child: _kv(
                       'Ind. Probabilidad',
-                      _countProbabilidadIden.toString(),
+                      // _countProbabilidadIden.toString(),
+                      _countProbabilidadEval != 0
+                          ? _countProbabilidadEval.toString()
+                          : _countProbabilidadIden.toString(),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _kv('Ind. Severidad', _severidadIden.toString()),
+                    child: _kv(
+                      'Ind. Severidad',
+                      _severidadEval != null
+                          ? _severidadEval.toString()
+                          : _severidadIden.toString(),
+                    ),
                   ),
                 ],
               ),
 
               Row(
                 children: [
-                  Expanded(child: _kv('Ind. Fase', _countFase.toString())),
+                  Expanded(
+                    child: _kv(
+                      'Ind. Fase',
+                      // _countFase.toString(),
+                      _countFaseEval != 0
+                          ? _countFaseEval.toString()
+                          : _countFase.toString(),
+                    ),
+                  ),
                   const SizedBox(width: 12),
                 ],
               ),
@@ -1738,60 +1850,29 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
               // _kv('Ind. Fase', _countFase.toString()),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
           SummaryCard(
             title: '4.- Medidas de Control',
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _kv(
-                      'Eval. Persona Expuesta',
-                      _personaExpuestaEval.toString(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _kv(
-                      'Eval. Procedimiento Existente',
-                      _procedimientoExistenteEval.toString(),
-                    ),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 8),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _kv(
-                      'Eval. Capacitacion',
-                      _capacitacionEval.toString(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _kv(
-                      'Eval. Exp. Riesgo',
-                      _exposicionRiesgoEval.toString(),
-                    ),
-                  ),
-                ],
-              ),
+              // String _stdControlCtrl = "activado";
+              // bool _switchValueControl = false;
+              _kv('ID Control', _idControl.toString()),
+              _kv('Nombre Control', _nombreControl),
+              _kv('Responsable', _responsableControlCtrl.text),
+              _kv('Eficacia', _eficaciaControlCtrl.text),
+              _kv('Estado', _estadoControlCtrl.text),
+              _kv('Evidencia', _evidenciaControlCtrl.text),
+              _kv('Estado', _stdControlCtrl),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _kv(
-                      'Eval. Probabilidad',
-                      _countProbabilidadEval.toString(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _kv('Eval. Severidad', _severidadEval.toString()),
-                  ),
-                ],
+              const SizedBox(height: 15),
+
+              const Text(
+                "Imagen:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
+              const SizedBox(height: 8),
 
               // _kv('Eval. Persona Expuesta', _personaExpuestaEval.toString()),
               // _kv(
@@ -1822,7 +1903,7 @@ class _IdentificarPeligroState extends State<IdentificarPeligro> {
           // ),
           const SizedBox(height: 12),
           const Text('Si todo es correcto, presiona "Registrar".'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 25),
         ],
       ),
     );

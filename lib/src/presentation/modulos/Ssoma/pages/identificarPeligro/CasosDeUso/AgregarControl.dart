@@ -74,7 +74,7 @@ class _AgregarControlState extends State<AgregarControl> {
     TipoControlOption(4, 'Administrativo'),
     TipoControlOption(5, 'EPP'),
   ];
-  int? _selectedTipoControlId;  
+  int? _selectedTipoControlId;
 
   // 4.- Inicializar
   @override
@@ -100,10 +100,16 @@ class _AgregarControlState extends State<AgregarControl> {
       Control(
         nombre: _nombreController.text,
         // tipo: _tipoController.text,
-        tipo: _tipoControles[_selectedTipoControlId!].label.toString(),
+        // tipo: _tipoControles[_selectedTipoControlId!].label.toString(),
+        tipo: _tipoControles
+            .firstWhere((f) => f.id == _selectedTipoControlId)
+            .label,
         descripcion: _descripcionController.text,
         // categoria: _categoriaController.text,
-        categoria: _tipoControles[_selectedTipoControlId!].label.toString(),
+        // categoria: _tipoControles[_selectedTipoControlId!].label.toString(),
+        categoria: _tipoControles
+            .firstWhere((f) => f.id == _selectedTipoControlId)
+            .label,
         std: _stdController,
         usuarioCreacion: 'admin',
         fechaCreacion: DateTime.now(),
@@ -121,10 +127,16 @@ class _AgregarControlState extends State<AgregarControl> {
         id: id,
         nombre: _nombreController.text,
         //tipo: _tipoController.text,
-        tipo: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
+        // tipo: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
+        tipo: _tipoControles
+            .firstWhere((f) => f.id == _selectedTipoControlId)
+            .label,
         descripcion: _descripcionController.text,
         // categoria: _categoriaController.text,
-        categoria: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
+        // categoria: _tipoControles[_selectedTipoControlId! - 1].label.toString(),
+        categoria: _tipoControles
+            .firstWhere((f) => f.id == _selectedTipoControlId)
+            .label,
         std: _stdController,
         usuarioCreacion: 'system', //  ficticio
         fechaCreacion: DateTime(2025, 01, 01), //  ficticio
