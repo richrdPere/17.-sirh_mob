@@ -109,8 +109,11 @@ class DatabaseSsoma {
   // ===========================================
   // 1.- PELIGRO
   // ===========================================
-  Future<int> insertPeligro(Peligro peligro) async =>
-      await insert('ss_peligro', peligro.toMap());
+  Future<int> insertPeligro(Peligro peligro) async {
+    final id = await insert('ss_peligro', peligro.toMap());
+
+    return id;
+  }
 
   Future<List<Peligro>> getPeligros() async {
     final maps = await queryAll('ss_peligro');
@@ -201,8 +204,10 @@ class DatabaseSsoma {
   // ===========================================
   // 5.- EVALUACION DE RIESGO
   // ===========================================
-  Future<int> insertEvaluacionRiesgo(EvaluacionRiesgo evaluacionRiesgo) async =>
-      await insert('ss_evaluacion_riesgo', evaluacionRiesgo.toMap());
+  Future<int> insertEvaluacionRiesgo(EvaluacionRiesgo evaluacionRiesgo) async {
+    final id = await insert('ss_evaluacion_riesgo', evaluacionRiesgo.toMap());
+    return id;
+  }
 
   Future<List<EvaluacionRiesgo>> getEvaluacionRiesgo() async {
     final maps = await queryAll('ss_evaluacion_riesgo');
@@ -235,14 +240,29 @@ class DatabaseSsoma {
     );
   }
 
+  Future<Map<String, dynamic>?> getLastEvaluacionByPeligroId(
+    int peligroId,
+  ) async {
+    final dbClient = await database;
+    final res = await dbClient.query(
+      'ss_evaluacion_riesgo',
+      where: 'eri_id_peligro = ?',
+      whereArgs: [peligroId]
+    );
+    if (res.isEmpty) return null;
+    return res.first;
+  }
+
   Future<int> deleteEvaluacionRiesgo(int id) async =>
       await delete('ss_evaluacion_riesgo', 'eri_id = ?', [id]);
 
   // ===========================================
   // 6.- MEDIDAS DE CONTROL
   // ===========================================
-  Future<int> insertMedidasControl(MedidaControl medidaControl) async =>
-      await insert('ss_medida_control', medidaControl.toMap());
+  Future<int> insertMedidasControl(MedidaControl medidaControl) async {
+    final id = await insert('ss_medida_control', medidaControl.toMap());
+    return id;
+  }
 
   Future<List<MedidaControl>> getMedidasControl() async {
     final maps = await queryAll('ss_medida_control');
@@ -255,12 +275,9 @@ class DatabaseSsoma {
   }
 
   Future<int> updateMedidaControl(MedidaControl medidaControl) async =>
-      await update(
-        'ss_medida_control',
-        medidaControl.toMap(),
-        'mec_id = ?',
-        [medidaControl.id],
-      );
+      await update('ss_medida_control', medidaControl.toMap(), 'mec_id = ?', [
+        medidaControl.id,
+      ]);
 
   Future<int> updateMedidaControlById(
     int id,

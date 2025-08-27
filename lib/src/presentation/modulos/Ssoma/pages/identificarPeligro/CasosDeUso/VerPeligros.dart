@@ -73,7 +73,7 @@ class _VerPeligrosState extends State<VerPeligros> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Peligros Identificados")),
+      appBar: AppBar(title: const Text("Identificación de Peligros")),
       body: _allPeligros.isEmpty
           ? const Center(child: Text("No hay peligros registrados"))
           : ListView.builder(

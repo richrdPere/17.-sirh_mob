@@ -63,35 +63,35 @@ class MCuscoPage extends StatelessWidget {
 
     return Scaffold(
       key: _scaffoldKey, // clave para abrir el drawer
-      // endDrawer: Drawer(child: _drawerHeader(context)),
-      endDrawer: BlocBuilder<MCuscoBloc, MCuscoState>(
-        builder: (context, state) {
-          return Drawer(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blue[400]),
-                  child: Text(
-                    'Menu del cliente',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                ListTile(
-                  title: Text('Perfil del usuario'),
-                  selected: state.pageIndex == 0,
-                  onTap: () {
-                    context.read<MCuscoBloc>().add(
-                      ChangeDrawerPage(pageIndex: 0),
-                    );
-                    context.go("/profile");
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      endDrawer: Drawer(child: _drawerHeader(context)),
+      // endDrawer: BlocBuilder<MCuscoBloc, MCuscoState>(
+      //   builder: (context, state) {
+      //     return Drawer(
+      //       child: ListView(
+      //         padding: EdgeInsets.zero,
+      //         children: [
+      //           DrawerHeader(
+      //             decoration: BoxDecoration(color: Colors.blue[400]),
+      //             child: Text(
+      //               'Menu del cliente',
+      //               style: TextStyle(color: Colors.white),
+      //             ),
+      //           ),
+      //           ListTile(
+      //             title: Text('Perfil del usuario'),
+      //             selected: state.pageIndex == 0,
+      //             onTap: () {
+      //               context.read<MCuscoBloc>().add(
+      //                 ChangeDrawerPage(pageIndex: 0),
+      //               );
+      //               context.go("/profile");
+      //             },
+      //           ),
+      //         ],
+      //       ),
+      //     );
+      //   },
+      // ),
       backgroundColor: Colors.white,
       body: BlocBuilder<MCuscoBloc, MCuscoState>(
         builder: (context, state) {

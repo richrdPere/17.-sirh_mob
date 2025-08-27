@@ -24,20 +24,40 @@ class _OptionsSsomaState extends State<OptionsSsoma> {
   // Menu Options
   final List<MenuOption> menuOptions = [
     MenuOption(
-      title: "Seguridad/Protección",
+      title: "Crear Reporte - Seguridad/Protección",
       icon: Icons.health_and_safety,
       route: "/ssoma/seguridad_proteccion",
     ),
     MenuOption(
-      title: "Medio Ambiente",
-      icon: Icons.eco,
-      route: "",
+      title: "Identificación de Peligros",
+      icon: Icons.warning_amber_rounded,
+      route: "/ssoma/ver_identificacion_peligros",
     ),
     MenuOption(
-      title: "Prevención/Alertas",
-      icon: Icons.warning,
-      route: "",
+      title: "Evaluación de Riesgos",
+      icon: Icons.analytics_outlined,
+      route: "/ssoma/ver_evaluacion_riesgo",
     ),
+    MenuOption(
+      title: "Medidas de Control",
+      icon: Icons.security,
+      route: "/ssoma/ver_medidas_control",
+    ),
+    MenuOption(
+      title: "VER REGISTROS - IPERC",
+      icon: Icons.warning,
+      route: "/ssoma/ver_medidas_control",
+    ),
+    // MenuOption(
+    //   title: "Medio Ambiente",
+    //   icon: Icons.eco,
+    //   route: "",
+    // ),
+    // MenuOption(
+    //   title: "Prevención/Alertas",
+    //   icon: Icons.warning,
+    //   route: "",
+    // ),
     // MenuOption(
     //   title: "Maeria",
     //   icon: Icons.health_and_safety,

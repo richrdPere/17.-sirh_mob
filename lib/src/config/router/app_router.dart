@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/OptionsSsoma/OptionsSsoma.dart';
+import 'package:path/path.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/OptionsSsoma/OptionsSsoma.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarControl.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPasosTareas.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/AgregarPuestoTrabajo.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/VerEvaluacionRiesgo.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/VerMedidasControl.dart';
+import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/CasosDeUso/VerPeligros.dart';
 import 'package:sirh_mob/src/presentation/modulos/Ssoma/pages/identificarPeligro/IdentificarPeligro.dart';
 import 'package:sirh_mob/src/presentation/auth/login/LoginPage.dart';
 import 'package:sirh_mob/src/presentation/auth/register/RegisterPage.dart';
@@ -28,6 +32,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/profile', builder: (context, state) => ProfileInfoPage()),
     GoRoute(path: '/muni', builder: (context, state) => MCuscoPage()),
 
+    // RUTA DE FUNCIONES - SSOMA
     GoRoute(
       path: '/ssoma',
       builder: (context, state) => OptionsSsoma(),
@@ -50,35 +55,19 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+        GoRoute(
+          path: '/ver_identificacion_peligros',
+          builder: (context, state) => VerPeligros(),
+        ),
+        GoRoute(
+          path: '/ver_evaluacion_riesgo',
+          builder: (context, state) => VerEvaluacionRiesgo(),
+        ),
+        GoRoute(
+          path: '/ver_medidas_control',
+          builder: (context, state) => VerMedidasControl(),
+        ),
       ],
     ),
-
-    //GoRoute(path: '/home', builder: (context, state) => DashboardPage()),
-    // ShellRoute(
-    //   builder: (_, __, child) => DashboardPage(child: child),
-    //   routes: [
-    //     GoRoute(
-    //       path: '/dashboard/home',
-    //       builder: (_, __) => const HomeScreen(),
-    //       // builder: (_, __) => MunicipalidadCuscoPage(),
-    //     ),
-    //     // GoRoute(
-    //     //   path: '/dashboard/mapa',
-    //     //   builder: (_, __) => const MapaScreen(),
-    //     // ),
-    //     GoRoute(
-    //       path: '/dashboard/gestion_incidencias',
-    //       builder: (_, __) => const GestionIncidenciasScreen(),
-    //     ),
-    //     // GoRoute(
-    //     //   path: '/dashboard/chats',
-    //     //   builder: (_, __) => const ChatsScreen(),
-    //     // ),
-    //     GoRoute(
-    //       path: '/dashboard/notificaciones',
-    //       builder: (_, __) => const NotificacionesScreen(),
-    //     ),
-    //   ],
-    // ),
   ],
 );

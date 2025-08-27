@@ -4,13 +4,13 @@ class Peligro {
   final int? tareaId; // Referencia a Tarea
   final String nombre;
   final String gravedad;
-  final DateTime? fechaIdentificacion;
+  final String? fechaIdentificacion;
   final String? ruta; // imagen
   final String? std;
   final String? usuarioCreacion;
   final String? fechaCreacion;
   final String? usuarioModificacion;
-  final DateTime? fechaModificacion;
+  final String? fechaModificacion;
 
   Peligro({
     this.id,
@@ -35,9 +35,10 @@ class Peligro {
       tareaId: json['tareaId'],
       nombre: json['nombre'] ?? '',
       gravedad: json['gravedad'] ?? '',
-      fechaIdentificacion: json['fechaIdentificacion'] != null
-          ? DateTime.parse(json['fechaIdentificacion'])
-          : null,
+      // fechaIdentificacion: json['fechaIdentificacion'] != null
+      //     ? DateTime.parse(json['fechaIdentificacion'])
+      //     : null,
+      fechaIdentificacion: json['fechaIdentificacion'],
       ruta: json['ruta'],
       std: json['std'],
       usuarioCreacion: json['usuarioCreacion'],
@@ -46,9 +47,10 @@ class Peligro {
       //     ? String.parse(json['fechaCreacion'])
       //     : null,
       usuarioModificacion: json['usuarioModificacion'],
-      fechaModificacion: json['fechaModificacion'] != null
-          ? DateTime.parse(json['fechaModificacion'])
-          : null,
+      fechaModificacion: json['fechaModificacion']
+      // fechaModificacion: json['fechaModificacion'] != null
+      //     ? DateTime.parse(json['fechaModificacion'])
+      //     : null,
     );
   }
 
@@ -59,14 +61,16 @@ class Peligro {
       'tareaId': tareaId,
       'nombre': nombre,
       'gravedad': gravedad,
-      'fechaIdentificacion': fechaIdentificacion?.toIso8601String(),
+      // 'fechaIdentificacion': fechaIdentificacion?.toIso8601String(),
+      'fechaIdentificacion': fechaIdentificacion,
       'ruta': ruta,
       'std': std,
       'usuarioCreacion': usuarioCreacion,
       'fechaCreacion': fechaCreacion,
       // 'fechaCreacion': fechaCreacion?.toIso8601String(),
       'usuarioModificacion': usuarioModificacion,
-      'fechaModificacion': fechaModificacion?.toIso8601String(),
+      // 'fechaModificacion': fechaModificacion?.toIso8601String(),
+      'fechaModificacion': fechaModificacion
     };
   }
 

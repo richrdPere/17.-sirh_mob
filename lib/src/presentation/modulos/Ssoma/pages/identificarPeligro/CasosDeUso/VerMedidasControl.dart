@@ -4,81 +4,64 @@ import 'package:flutter/material.dart';
 import 'package:sirh_mob/src/data/datasource/local/db_sqlite/database_ssoma.dart';
 
 // Modelo
-import 'package:sirh_mob/src/domain/models/ssoma_models/EvaluacionRiesgo.dart';
+import 'package:sirh_mob/src/domain/models/ssoma_models/MedidasControl.dart';
 
-class VerEvaluacionRiesgo extends StatefulWidget {
-  const VerEvaluacionRiesgo({super.key});
+class VerMedidasControl extends StatefulWidget {
+  const VerMedidasControl({super.key});
 
   @override
-  State<VerEvaluacionRiesgo> createState() => _VerEvaluacionRiesgoState();
+  State<VerMedidasControl> createState() => _VerMedidasControlState();
 }
 
-class _VerEvaluacionRiesgoState extends State<VerEvaluacionRiesgo> {
+class _VerMedidasControlState extends State<VerMedidasControl> {
   // 1.- Instancia a la DB Ssoma
   final db = DatabaseSsoma.instance;
 
   // 2.- Todas las evaluaciones de riesgo
-  List<EvaluacionRiesgo> _allEvaluacionRiesgo = [];
+  List<MedidaControl> _allMedidaControl = [];
   bool _isLoading = true;
 
   // 4.- Inicializar
   @override
   void initState() {
     super.initState();
-    _refreshPeligros();
+    _refreshMedidasControl();
   }
 
   // 5.- Funciones
   // Obtener
-  void _refreshPeligros() async {
-    final data = await db.getEvaluacionRiesgo();
+  void _refreshMedidasControl() async {
+    final data = await db.getMedidasControl();
 
     setState(() {
-      _allEvaluacionRiesgo = data;
+      _allMedidaControl = data;
       _isLoading = false;
     });
   }
 
-  // Actualizar
-  // Future<void> _updatePeligro(int id) async {
-  //   await db.updatePeligro(
-  //     Peligro(
-  //       id: id,
-  //       nombre: "",
-  //       gravedad: '',
-  //       ruta: '',
-  //       std: '',
-  //       fechaCreacion: DateTime.now().toString(),
-  //       puestoTrabajoId: null,
-  //       tareaId: null,
-  //       fechaIdentificacion: null,
-  //     ),
-  //   );
-  //   _refreshPeligros();
-  // }
-
   // Eliminar
-  void _deletePeligro(int id) async {
-    await db.deletePeligro(id);
+  void _deleteMedidasControl(int id) async {
+    await db
+      ..deleteMedidaControl(id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Colors.redAccent,
-        content: Text("Peligro eliminado."),
+        content: Text("Medida de Control eliminado."),
       ),
     );
-    _refreshPeligros();
+    _refreshMedidasControl();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Evaluación de Riesgos")),
-      body: _allEvaluacionRiesgo.isEmpty
+      appBar: AppBar(title: const Text("Medidas de Control")),
+      body: _allMedidaControl.isEmpty
           ? const Center(child: Text("No hay Evaluaciones registrados"))
           : ListView.builder(
-              itemCount: _allEvaluacionRiesgo.length,
+              itemCount: _allMedidaControl.length,
               itemBuilder: (context, index) {
-                final p = _allEvaluacionRiesgo[index];
+                final p = _allMedidaControl[index];
                 return Card(
                   margin: const EdgeInsets.all(10),
                   elevation: 4,
@@ -92,11 +75,11 @@ class _VerEvaluacionRiesgoState extends State<VerEvaluacionRiesgo> {
                     //       )
                     //     : const Icon(Icons.warning_amber, color: Colors.orange),
                     title: Text(
-                      p.nombre!,
+                      "${p.id}",
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      "Tipo: ${p.tipo}\nPers. Expuesta: ${p.personaExpuestaIden}\nPers. Existente: ${p.procedimientoExistenteIden}\nFecha: ${p.fechaCreacion}",
+                      "IdControl: ${p.controlId.toString()}\nResponsable: ${p.responsable}\nFecha Implementacion: ${p.fechaImplementacion}\nEficacia: ${p.eficacia}\nEvidencia: ${p.evidencia} \nFecha Creacion: ${p.fechaCreacion}",
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -109,7 +92,7 @@ class _VerEvaluacionRiesgoState extends State<VerEvaluacionRiesgo> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deletePeligro(p.id!),
+                          onPressed: () => _deleteMedidasControl(p.id!),
                         ),
                       ],
                     ),
